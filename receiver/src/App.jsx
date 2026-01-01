@@ -278,11 +278,56 @@ function App() {
       setIsCapturing(false);
       setIsCapturingMultiple(false);
       setCaptureProgress(null);
-      if (socket) {
-        socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
-          error: error.message || 'Failed to analyze images'
-        });
+      alert('Failed to analyze images: ' + (error.message || 'Unknown error'));
+    }
+  };
+
+  const tryApiFallback = async (images) => {
+    try {
+      console.log('[BATCH_ANALYZE] Trying API fallback...');
+      setIsCapturing(true);
+      
+      const response = await fetch('/api/batch-analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ images })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      
+      const data = await response.json();
+      if (data.success && data.analysis) {
+        console.log('[BATCH_ANALYZE] Analysis complete via API');
+        // Trigger response handler manually
+        window.dispatchEvent(new CustomEvent('batchAnalyzeComplete', { 
+          detail: { success: true, analysis: data.analysis } 
+        }));
+        
+        // Also emit socket event if socket exists (for ChatInterface)
+        if (socket) {
+          socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, {
+            analysis: data.analysis,
+            imageCount: images.length,
+            timestamp: Date.now()
+          });
+        }
+        
+        setIsCapturing(false);
+        setIsCapturingMultiple(false);
+        setCaptureProgress(null);
+      } else {
+        throw new Error(data.error || 'Analysis failed');
+      }
+    } catch (apiError) {
+      console.error('[BATCH_ANALYZE] API fallback error:', apiError);
+      setIsCapturing(false);
+      setIsCapturingMultiple(false);
+      setCaptureProgress(null);
+      alert('Failed to analyze images via API: ' + apiError.message);
     }
   };
 
