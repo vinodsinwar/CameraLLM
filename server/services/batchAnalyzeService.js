@@ -173,6 +173,8 @@ Answer: d
 
 ...
 
+Summary: 1(a), 2(a and b), 3(d), 4(not visible), 5(c), ...
+
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
@@ -189,6 +191,10 @@ CRITICAL RULES:
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
 - Number questions sequentially starting from 1
+- At the END, add a "Summary:" line with all question numbers and their answers in format: "Summary: 1(a), 2(b), 3(a and b), 4(not visible), ..."
+- Summary format: question number in parentheses with answer, separated by commas
+- For multiple answers in summary: use "a and b" format (same as in Answer line)
+- For not visible in summary: use "not visible"
 
 Do NOT:
 - Describe the images or screenshots
@@ -197,9 +203,9 @@ Do NOT:
 - Include duplicate questions
 - Skip options - you must find ALL options for each question
 - Give up on finding answers easily - analyze thoroughly
-- Add any other text before or after the list
+- Add any other text before the list or after the Summary
 
-Return ONLY the output in the exact format specified above.`;
+Return ONLY the output in the exact format specified above, including the Summary at the end.`;
 
     // Convert all images to Gemini format
     const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
@@ -284,6 +290,8 @@ Answer: d
 
 ...
 
+Summary: 1(a), 2(a and b), 3(d), 4(not visible), 5(c), ...
+
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
@@ -300,6 +308,10 @@ CRITICAL RULES:
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
 - Number questions sequentially starting from 1
+- At the END, add a "Summary:" line with all question numbers and their answers in format: "Summary: 1(a), 2(b), 3(a and b), 4(not visible), ..."
+- Summary format: question number in parentheses with answer, separated by commas
+- For multiple answers in summary: use "a and b" format (same as in Answer line)
+- For not visible in summary: use "not visible"
 
 Do NOT:
 - Describe the images or screenshots
@@ -308,9 +320,9 @@ Do NOT:
 - Include duplicate questions
 - Skip options - you must find ALL options for each question
 - Give up on finding answers easily - analyze thoroughly
-- Add any other text before or after the list
+- Add any other text before the list or after the Summary
 
-Return ONLY the output in the exact format specified above.`;
+Return ONLY the output in the exact format specified above, including the Summary at the end.`;
         
         const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
         const parts = [
