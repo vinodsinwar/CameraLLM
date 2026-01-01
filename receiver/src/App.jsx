@@ -98,10 +98,24 @@ function App() {
       // Wait a moment for camera to stabilize
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      let elapsed = 0;
-      let captured = 0;
+      // Capture first image immediately
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        const imageData = canvas.toDataURL('image/jpeg', 0.85);
+        multipleCaptureImagesRef.current.push(imageData);
+        setCaptureProgress({ elapsed: 0, total: 60, captured: 1 });
+      } catch (err) {
+        console.error('Error capturing first image:', err);
+      }
 
-      // Capture every 2 seconds for 1 minute (30 captures)
+      let elapsed = 2; // Start at 2 seconds since first capture was at 0
+      let captured = 1;
+
+      // Capture every 2 seconds for 1 minute (total 30 captures: 1 immediate + 29 more)
       captureIntervalRef.current = setInterval(async () => {
         try {
           const canvas = document.createElement('canvas');
@@ -117,7 +131,7 @@ function App() {
 
           setCaptureProgress({ elapsed, total: 60, captured });
 
-          // After 1 minute, stop capturing and analyze
+          // After 1 minute (60 seconds), stop capturing and analyze
           if (elapsed >= 60) {
             clearInterval(captureIntervalRef.current);
             

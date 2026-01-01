@@ -51,38 +51,55 @@ export const analyzeMultipleImages = async (images) => {
     }
 
     // Prepare prompt for batch analysis
-    const prompt = `You are analyzing ${images.length} images that contain questions/problems (like exam questions, quiz questions, coding challenges, etc.).
+    const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
 
-Your task:
-1. Extract ALL unique questions/problems from ALL images
-2. For each unique question, provide ONLY the answer(s)
-3. Format your response EXACTLY as follows (one question per line):
+IMPORTANT NOTES:
+- A single question may appear partially across multiple images (split across screenshots)
+- Some questions may appear more than once (duplicate screenshots)
+- Some images may contain overlapping or missing text
+- Questions may be cut off or split between images
 
-Question 1 - Answer D
-Question 2 - Answer A, E
-Question 3 - Answer B
-Question 4 - Answer C, D, F
+YOUR TASK:
+1. Analyze ALL images together as one cohesive set
+2. Identify ALL unique questions by:
+   - Merging partial or split question text across images
+   - Combining text fragments that belong to the same question
+   - Removing duplicate questions (same question appearing in multiple images)
+3. For each final unique question:
+   - Analyze the question and find the answer from the multiple choice options
+   - Identify the correct answer(s) ONLY if visible or clearly inferable
+   - If the answer is NOT visible or cannot be determined, state "Answer not visible"
+
+OUTPUT FORMAT (EXACTLY as shown):
+total number of questions : X
+
+question 1 - answer a
+question 2 - answer a and b
+question 3 - answer d
+question 4 - answer not visible
+question 5 - answer c
 ...
 
-IMPORTANT RULES:
-- If the same question appears in multiple images, list it ONLY ONCE (remove duplicates)
-- Use "Question X" format where X is the question number
-- For single answer: "Question 1 - Answer D"
-- For multiple answers: "Question 2 - Answer A, E" (comma-separated)
+CRITICAL RULES:
+- Start with "total number of questions : X" where X is the count of unique questions
+- Use lowercase: "question X - answer Y" (not "Question" or "Answer")
+- For single answer: "question 1 - answer a"
+- For multiple answers: "question 2 - answer a and b" (use "and" not commas)
+- If answer not visible: "question 4 - answer not visible"
 - NO explanations, NO descriptions, NO code blocks
-- NO "Question/Problem:" or "Answer/Solution:" labels
-- Just the format: "Question X - Answer Y"
-- If a question has multiple correct answers, list them comma-separated
-- Only include questions that have clear answers
+- NO duplicate questions (each question appears only once)
+- Merge partial questions that are split across images
+- Number questions sequentially starting from 1
 
 Do NOT:
-- Describe the images
-- Provide explanations
-- Show code
+- Describe the images or screenshots
+- Provide explanations or reasoning
+- Show code or calculations
 - Include duplicate questions
-- Add any other text
+- Use "Question" or "Answer" (use lowercase)
+- Add any other text before or after the list
 
-Return ONLY the list of questions and answers in the specified format.`;
+Return ONLY the output in the exact format specified above.`;
 
     // Convert all images to Gemini format
     const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
@@ -131,48 +148,72 @@ Return ONLY the list of questions and answers in the specified format.`;
  * Format and deduplicate the batch analysis response
  */
 const formatBatchAnalysis = (analysis) => {
-  if (!analysis) return 'No questions found.';
+  if (!analysis) return 'total number of questions : 0';
 
-  // Extract lines that match "Question X - Answer Y" pattern
-  const lines = analysis.split('\n').filter(line => {
-    const trimmed = line.trim();
-    return /^Question\s+\d+\s*-\s*Answer\s+[A-Za-z0-9,\s]+/i.test(trimmed);
+  const lines = analysis.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+  
+  // Find the total count line
+  let totalCount = 0;
+  const totalMatch = analysis.match(/total\s+number\s+of\s+questions\s*:\s*(\d+)/i);
+  if (totalMatch) {
+    totalCount = parseInt(totalMatch[1], 10);
+  }
+
+  // Extract question lines (case-insensitive matching)
+  const questionLines = lines.filter(line => {
+    // Match: "question X - answer Y" or "question X - answer not visible"
+    return /^question\s+\d+\s*-\s*answer\s+[a-z0-9\s]+(?:and\s+[a-z0-9\s]+)?(?:not\s+visible)?$/i.test(line);
   });
 
-  if (lines.length === 0) {
-    // Try to extract questions from the text if format is different
+  if (questionLines.length === 0) {
+    // If no properly formatted lines, return as-is but try to extract
     return analysis;
   }
 
-  // Remove duplicates based on question content (before the dash)
-  const seenQuestions = new Set();
-  const uniqueLines = [];
+  // Parse and deduplicate questions
+  const questionMap = new Map(); // Use Map to preserve order and deduplicate
 
-  for (const line of lines) {
-    const match = line.match(/^Question\s+(\d+)\s*-\s*(.+)/i);
+  for (const line of questionLines) {
+    // Match: "question X - answer Y" or "question X - answer not visible"
+    const match = line.match(/^question\s+(\d+)\s*-\s*answer\s+(.+)$/i);
     if (match) {
-      const questionNum = match[1];
-      const answer = match[2].trim();
+      const questionNum = parseInt(match[1], 10);
+      const answer = match[2].trim().toLowerCase();
       
-      // Use question number + answer as key to detect duplicates
-      const key = `Q${questionNum}-${answer}`;
+      // Use question number as key to detect duplicates (same question number = duplicate)
+      // But we want to keep unique questions, so we'll use the answer text as part of the key
+      // Actually, we should deduplicate based on question content, but since we only have numbers,
+      // we'll assume the LLM already merged duplicates. We just need to ensure sequential numbering.
       
-      if (!seenQuestions.has(key)) {
-        seenQuestions.add(key);
-        uniqueLines.push(`Question ${questionNum} - Answer ${answer}`);
-      }
+      // Store with lowercase format
+      questionMap.set(questionNum, `question ${questionNum} - answer ${answer}`);
     }
   }
 
-  // Renumber questions sequentially
-  const renumbered = uniqueLines.map((line, index) => {
-    const match = line.match(/^Question\s+\d+\s*-\s*(.+)/i);
-    if (match) {
-      return `Question ${index + 1} - ${match[1]}`;
-    }
-    return line;
-  });
+  // Convert to array and renumber sequentially
+  const sortedQuestions = Array.from(questionMap.values())
+    .sort((a, b) => {
+      const numA = parseInt(a.match(/question\s+(\d+)/i)?.[1] || '0', 10);
+      const numB = parseInt(b.match(/question\s+(\d+)/i)?.[1] || '0', 10);
+      return numA - numB;
+    })
+    .map((line, index) => {
+      const match = line.match(/question\s+\d+\s*-\s*answer\s+(.+)$/i);
+      if (match) {
+        return `question ${index + 1} - answer ${match[1]}`;
+      }
+      return line;
+    });
 
-  return renumbered.length > 0 ? renumbered.join('\n') : analysis;
+  // Update total count to match actual questions found
+  const finalCount = sortedQuestions.length;
+  
+  // Build final output
+  const output = [
+    `total number of questions : ${finalCount}`,
+    ...sortedQuestions
+  ];
+
+  return output.join('\n');
 };
 
