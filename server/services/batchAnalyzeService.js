@@ -40,7 +40,20 @@ const convertBase64ToGeminiFormat = (base64DataUrl) => {
 };
 
 /**
+ * Add timeout wrapper for API calls
+ */
+const withTimeout = (promise, timeoutMs = 120000) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs)
+    )
+  ]);
+};
+
+/**
  * Analyze multiple images and return concise Q&A format
+ * Splits into batches if too many images
  */
 export const analyzeMultipleImages = async (images) => {
   try {
@@ -50,8 +63,54 @@ export const analyzeMultipleImages = async (images) => {
       throw new Error('No images provided');
     }
 
+    // Gemini API has limits - process in batches of 5 images (reduced for reliability)
+    const BATCH_SIZE = 5;
+    const batches = [];
+    for (let i = 0; i < images.length; i += BATCH_SIZE) {
+      batches.push(images.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`[BATCH_ANALYZE] Processing ${images.length} images in ${batches.length} batch(es) of ${BATCH_SIZE} each`);
+
+    // Process batches sequentially and combine results
+    const allResults = [];
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      console.log(`[BATCH_ANALYZE] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} images)...`);
+      
+      try {
+        const batchResult = await withTimeout(
+          analyzeBatch(batch, images.length),
+          180000 // 3 minute timeout per batch (increased)
+        );
+        console.log(`[BATCH_ANALYZE] Batch ${batchIndex + 1} completed successfully`);
+        allResults.push(batchResult);
+      } catch (batchError) {
+        console.error(`[BATCH_ANALYZE] Error in batch ${batchIndex + 1}:`, batchError);
+        // Continue with other batches even if one fails
+        allResults.push(`\n[Batch ${batchIndex + 1} failed: ${batchError.message}]\n`);
+      }
+    }
+
+    // Combine all batch results
+    const combinedResult = allResults.join('\n\n');
+    console.log(`[BATCH_ANALYZE] All batches processed. Total result length: ${combinedResult.length} characters`);
+    return combinedResult;
+  } catch (error) {
+    console.error('Error analyzing multiple images:', error);
+    throw new Error(`Batch analysis failed: ${error.message}`);
+  }
+};
+
+/**
+ * Analyze a single batch of images
+ */
+const analyzeBatch = async (images, totalImageCount = null) => {
+  const model = getGeminiClient();
+
     // Prepare prompt for batch analysis
-    const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
+    const imageCountText = totalImageCount ? `${images.length} images (part of ${totalImageCount} total)` : `${images.length} images`;
+    const prompt = `You are analyzing ${imageCountText} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
 
 IMPORTANT NOTES:
 - A single question may appear partially across multiple images (split across screenshots)

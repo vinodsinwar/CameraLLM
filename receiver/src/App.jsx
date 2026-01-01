@@ -218,9 +218,31 @@ function App() {
       const payloadSize = JSON.stringify({ images }).length;
       console.log(`[BATCH_ANALYZE] Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
       
+      // Set up timeout (5 minutes max)
+      const timeoutId = setTimeout(() => {
+        console.error('[BATCH_ANALYZE] Timeout after 5 minutes');
+        setIsCapturing(false);
+        setIsCapturingMultiple(false);
+        setCaptureProgress(null);
+        alert('Analysis timed out after 5 minutes. The images may be too large or the server is overloaded. Please try with fewer images.');
+      }, 5 * 60 * 1000); // 5 minutes
+
+      // Clean up timeout when response received
+      const cleanupTimeout = () => {
+        clearTimeout(timeoutId);
+      };
+
       // Send all images to server for batch analysis
       if (socket && socket.connected) {
         console.log('[BATCH_ANALYZE] Sending via socket');
+        
+        // Set up one-time response handler to clean up timeout
+        const responseHandler = () => cleanupTimeout();
+        const errorHandler = () => cleanupTimeout();
+        
+        socket.once(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, responseHandler);
+        socket.once(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, errorHandler);
+        
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
           images,
           timestamp: Date.now()
@@ -364,12 +386,33 @@ function App() {
       setCountdown(null);
     };
 
+    const handleBatchAnalyzeResponse = (data) => {
+      console.log('[BATCH_ANALYZE] Response received in App:', data);
+      // Results handled by ChatInterface
+      setIsCapturing(false);
+      setIsCapturingMultiple(false);
+      setCaptureProgress(null);
+    };
+
+    const handleBatchAnalyzeError = (data) => {
+      console.error('[BATCH_ANALYZE] Error in App:', data);
+      setIsCapturing(false);
+      setIsCapturingMultiple(false);
+      setCaptureProgress(null);
+      const errorMsg = data.error || 'Unknown error';
+      alert('Batch analysis failed: ' + errorMsg + '\n\nPlease try again with fewer images or check your connection.');
+    };
+
     socket.on(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
     socket.on(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
 
     return () => {
       socket.off(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
       socket.off(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
     };
   }, [socket]);
 
