@@ -218,37 +218,54 @@ function App() {
       const payloadSize = JSON.stringify({ images }).length;
       console.log(`[BATCH_ANALYZE] Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
       
-      // Set up timeout (5 minutes max)
-      const timeoutId = setTimeout(() => {
-        console.error('[BATCH_ANALYZE] Timeout after 5 minutes');
+      // Set up timeout and completion handler
+      let timeoutId;
+      let completed = false;
+      
+      const cleanup = (success = true) => {
+        if (completed) return;
+        completed = true;
+        if (timeoutId) clearTimeout(timeoutId);
         setIsCapturing(false);
         setIsCapturingMultiple(false);
         setCaptureProgress(null);
-        alert('Analysis timed out after 5 minutes. The images may be too large or the server is overloaded. Please try with fewer images.');
-      }, 5 * 60 * 1000); // 5 minutes
-
-      // Clean up timeout when response received
-      const cleanupTimeout = () => {
-        clearTimeout(timeoutId);
+        console.log(`[BATCH_ANALYZE] Cleanup complete. Success: ${success}`);
       };
-
+      
+      // Set timeout (5 minutes)
+      timeoutId = setTimeout(() => {
+        console.error('[BATCH_ANALYZE] Timeout after 5 minutes');
+        cleanup(false);
+        alert('Analysis timed out after 5 minutes. Trying API fallback...');
+        // Try API fallback
+        tryApiFallback(images);
+      }, 5 * 60 * 1000);
+      
+      // Listen for completion event from ChatInterface
+      const handleComplete = (event) => {
+        cleanup(event.detail.success);
+        window.removeEventListener('batchAnalyzeComplete', handleComplete);
+      };
+      window.addEventListener('batchAnalyzeComplete', handleComplete);
+      
       // Send all images to server for batch analysis
       if (socket && socket.connected) {
         console.log('[BATCH_ANALYZE] Sending via socket');
         
-        // Set up one-time response handler to clean up timeout
-        const responseHandler = () => cleanupTimeout();
-        const errorHandler = () => cleanupTimeout();
-        
-        socket.once(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, responseHandler);
-        socket.once(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, errorHandler);
+        // Check if payload is too large (Socket.io default limit is 1MB)
+        if (payloadSize > 1024 * 1024) {
+          console.warn('[BATCH_ANALYZE] Payload too large for socket, using API fallback');
+          if (timeoutId) clearTimeout(timeoutId);
+          window.removeEventListener('batchAnalyzeComplete', handleComplete);
+          return tryApiFallback(images);
+        }
         
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
           images,
           timestamp: Date.now()
         });
-        console.log('[BATCH_ANALYZE] Request sent, waiting for response...');
-        // Don't set isCapturing to false here - wait for response
+        console.log('[BATCH_ANALYZE] Request sent via socket, waiting for response...');
+        // Don't set isCapturing to false here - wait for response or timeout
       } else {
         // Fallback to API
         console.log('[BATCH_ANALYZE] Sending via API fallback');
@@ -386,33 +403,12 @@ function App() {
       setCountdown(null);
     };
 
-    const handleBatchAnalyzeResponse = (data) => {
-      console.log('[BATCH_ANALYZE] Response received in App:', data);
-      // Results handled by ChatInterface
-      setIsCapturing(false);
-      setIsCapturingMultiple(false);
-      setCaptureProgress(null);
-    };
-
-    const handleBatchAnalyzeError = (data) => {
-      console.error('[BATCH_ANALYZE] Error in App:', data);
-      setIsCapturing(false);
-      setIsCapturingMultiple(false);
-      setCaptureProgress(null);
-      const errorMsg = data.error || 'Unknown error';
-      alert('Batch analysis failed: ' + errorMsg + '\n\nPlease try again with fewer images or check your connection.');
-    };
-
     socket.on(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
     socket.on(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
-    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
-    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
 
     return () => {
       socket.off(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
       socket.off(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
-      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
-      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
     };
   }, [socket]);
 

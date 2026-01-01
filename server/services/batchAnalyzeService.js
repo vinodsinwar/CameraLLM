@@ -63,27 +63,26 @@ export const analyzeMultipleImages = async (images) => {
       throw new Error('No images provided');
     }
 
-    // Gemini API has limits - process in batches of 5 images (reduced for reliability)
-    const BATCH_SIZE = 5;
+    // Gemini API has limits - process in batches of 10 images
+    const BATCH_SIZE = 10;
     const batches = [];
     for (let i = 0; i < images.length; i += BATCH_SIZE) {
       batches.push(images.slice(i, i + BATCH_SIZE));
     }
 
-    console.log(`[BATCH_ANALYZE] Processing ${images.length} images in ${batches.length} batch(es) of ${BATCH_SIZE} each`);
+    console.log(`[BATCH_ANALYZE] Processing ${images.length} images in ${batches.length} batch(es)`);
 
     // Process batches sequentially and combine results
     const allResults = [];
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`[BATCH_ANALYZE] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} images)...`);
+      console.log(`[BATCH_ANALYZE] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} images)`);
       
       try {
         const batchResult = await withTimeout(
-          analyzeBatch(batch, images.length),
-          180000 // 3 minute timeout per batch (increased)
+          analyzeBatch(batch, batchIndex === 0 ? images.length : null),
+          120000 // 2 minute timeout per batch
         );
-        console.log(`[BATCH_ANALYZE] Batch ${batchIndex + 1} completed successfully`);
         allResults.push(batchResult);
       } catch (batchError) {
         console.error(`[BATCH_ANALYZE] Error in batch ${batchIndex + 1}:`, batchError);
@@ -93,9 +92,7 @@ export const analyzeMultipleImages = async (images) => {
     }
 
     // Combine all batch results
-    const combinedResult = allResults.join('\n\n');
-    console.log(`[BATCH_ANALYZE] All batches processed. Total result length: ${combinedResult.length} characters`);
-    return combinedResult;
+    return allResults.join('\n\n');
   } catch (error) {
     console.error('Error analyzing multiple images:', error);
     throw new Error(`Batch analysis failed: ${error.message}`);

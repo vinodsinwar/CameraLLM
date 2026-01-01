@@ -47,7 +47,10 @@ const io = new Server(httpServer, {
     origin: isDevelopment ? '*' : allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
-  }
+  },
+  maxHttpBufferSize: 50 * 1024 * 1024, // 50MB for large image batches
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 const PORT = process.env.PORT || 3001;

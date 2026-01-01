@@ -113,7 +113,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
     };
 
     const handleBatchAnalyzeResponse = (data) => {
-      console.log('[BATCH_ANALYZE] Response received:', data);
+      console.log('[BATCH_ANALYZE] Response received in ChatInterface:', data);
       const { analysis, error } = data;
       
       if (error) {
@@ -138,10 +138,13 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
         ]);
       }
       setIsLoading(false);
+      
+      // Trigger custom event to notify App.jsx
+      window.dispatchEvent(new CustomEvent('batchAnalyzeComplete', { detail: { success: !error } }));
     };
 
     const handleBatchAnalyzeError = (data) => {
-      console.error('[BATCH_ANALYZE] Error:', data);
+      console.error('[BATCH_ANALYZE] Error in ChatInterface:', data);
       setMessages((prev) => [
         ...prev,
         {
@@ -152,6 +155,9 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
         }
       ]);
       setIsLoading(false);
+      
+      // Trigger custom event to notify App.jsx
+      window.dispatchEvent(new CustomEvent('batchAnalyzeComplete', { detail: { success: false, error: data.error } }));
     };
 
     socket.on(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
