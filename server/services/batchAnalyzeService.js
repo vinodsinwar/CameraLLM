@@ -345,9 +345,10 @@ const formatBatchAnalysis = (analysis) => {
     totalCount = parseInt(totalMatch[1], 10);
   }
 
-  // Extract questions in the new format: "Question X: ..." followed by "Answer: ..."
+  // Extract questions in the new format: "Question X: ..." followed by "Options:" and "Answer: ..."
   const questions = [];
   let currentQuestion = null;
+  let collectingOptions = false;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -363,14 +364,31 @@ const formatBatchAnalysis = (analysis) => {
       currentQuestion = {
         number: parseInt(questionMatch[1], 10),
         text: questionMatch[2].trim(),
+        options: [],
         answer: null
       };
+      collectingOptions = false;
+    }
+    // Match "Options:" pattern
+    else if (currentQuestion && /^Options:?$/i.test(line)) {
+      collectingOptions = true;
+    }
+    // Match option pattern: "A) ..." or "A. ..." or "A ..."
+    else if (currentQuestion && collectingOptions && /^[A-Z]\)\s*(.+)$/i.test(line)) {
+      const optionMatch = line.match(/^([A-Z])\)\s*(.+)$/i);
+      if (optionMatch) {
+        currentQuestion.options.push({
+          letter: optionMatch[1].toUpperCase(),
+          text: optionMatch[2].trim()
+        });
+      }
     }
     // Match "Answer: ..." pattern
     else if (currentQuestion && /^Answer:\s*(.+)$/i.test(line)) {
       const answerMatch = line.match(/^Answer:\s*(.+)$/i);
       if (answerMatch) {
         currentQuestion.answer = answerMatch[1].trim().toLowerCase();
+        collectingOptions = false;
       }
     }
   }
