@@ -89,7 +89,7 @@ export const analyzeMultipleImages = async (images, progressCallback = null) => 
     // Analyze all images together in one go
     const analysis = await withTimeout(
       analyzeAllImagesTogether(images),
-      60000 // 1 minute timeout for testing
+      300000 // 5 minute timeout for all images
     );
 
     // Emit final progress
@@ -310,7 +310,19 @@ Do NOT:
 - Give up on finding answers easily - analyze thoroughly
 - Add any other text before or after the list
 
-Return ONLY the output in the exact format specified above.`;
+SUMMARY (at the end):
+After all questions, add a one-line summary in this exact format:
+Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ... X(answer)
+
+Where:
+- Each entry is question number followed by answer in parentheses
+- Single answer: 1(a)
+- Multiple answers: 4(a and b) - use "and" not commas
+- Not visible: 5(not visible)
+- No extra spaces or descriptions
+- Separate entries with comma and space
+
+Return ONLY the output in the exact format specified above, including the summary at the end.`;
         
         const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
         const parts = [
