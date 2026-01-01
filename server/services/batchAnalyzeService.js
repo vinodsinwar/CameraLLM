@@ -192,7 +192,9 @@ CRITICAL RULES:
 - NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
-- Number questions sequentially starting from 1
+- CRITICAL: Preserve the ORIGINAL question numbers from the images - do NOT renumber them
+- If images show "Question 5:", "Question 7:", "Question 10:", use those exact numbers in output
+- Do NOT change question numbers to sequential 1, 2, 3, etc.
 
 Do NOT:
 - Describe the images or screenshots
@@ -307,7 +309,9 @@ CRITICAL RULES:
 - NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
-- Number questions sequentially starting from 1
+- CRITICAL: Preserve the ORIGINAL question numbers from the images - do NOT renumber them
+- If images show "Question 5:", "Question 7:", "Question 10:", use those exact numbers in output
+- Do NOT change question numbers to sequential 1, 2, 3, etc.
 
 Do NOT:
 - Describe the images or screenshots
@@ -423,13 +427,13 @@ const formatBatchAnalysis = (analysis) => {
     }
   }
 
-  // Sort by question number and renumber sequentially
+  // Sort by question number (preserve original numbers, don't renumber)
   uniqueQuestions.sort((a, b) => a.number - b.number);
   
-  // Build summary: "Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ..."
-  const summaryParts = uniqueQuestions.map((q, index) => {
+  // Build summary: "Summary: 5(a), 7(b), 10(c), ..." using original question numbers
+  const summaryParts = uniqueQuestions.map((q) => {
     const answer = q.answer || 'not visible';
-    return `${index + 1}(${answer})`;
+    return `${q.number}(${answer})`;
   });
   const summary = `Summary: ${summaryParts.join(', ')}`;
   
@@ -441,8 +445,9 @@ const formatBatchAnalysis = (analysis) => {
     ''
   ];
   
-  uniqueQuestions.forEach((q, index) => {
-    output.push(`Question ${index + 1}: ${q.text}`);
+  // Use original question numbers from images, not sequential numbering
+  uniqueQuestions.forEach((q) => {
+    output.push(`Question ${q.number}: ${q.text}`);
     if (q.options && q.options.length > 0) {
       output.push('Options:');
       q.options.forEach(opt => {
