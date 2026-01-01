@@ -1060,6 +1060,10 @@
   background: #1976d2;
 }
 
+.capture-button.capture-single:hover:not(:disabled) {
+  background: #1565c0;
+}
+
 .capture-button.capture-multiple {
   background: #4caf50;
 }
