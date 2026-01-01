@@ -322,13 +322,13 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
 
       <form className="chat-input-form" onSubmit={(e) => e.preventDefault()}>
         <div className="capture-actions">
-          <button
-            type="button"
-            className="capture-button capture-single"
-            onClick={onCaptureSingle}
-            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
-            title="Capture Single Image"
-          >
+            <button
+              type="button"
+              className="capture-button capture-single"
+              onClick={onCaptureSingle}
+              disabled={isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null || isLoading}
+              title="Capture Single Image"
+            >
             {countdown !== null && !isCapturingMultiple
               ? `${countdown}`
               : isCapturing && !isCapturingMultiple
@@ -356,7 +356,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
               className="clear-button"
               onClick={handleClearChat}
               title="Clear Chat"
-              disabled={isCapturing || isCapturingMultiple || countdown !== null}
+              disabled={isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null}
             >
               X
             </button>
