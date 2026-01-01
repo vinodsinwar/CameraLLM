@@ -214,13 +214,19 @@ function App() {
       console.log(`[BATCH_ANALYZE] Starting analysis for ${images.length} images`);
       setIsCapturing(true);
       
+      // Calculate payload size for logging
+      const payloadSize = JSON.stringify({ images }).length;
+      console.log(`[BATCH_ANALYZE] Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
+      
       // Send all images to server for batch analysis
-      if (socket) {
+      if (socket && socket.connected) {
         console.log('[BATCH_ANALYZE] Sending via socket');
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
           images,
           timestamp: Date.now()
         });
+        console.log('[BATCH_ANALYZE] Request sent, waiting for response...');
+        // Don't set isCapturing to false here - wait for response
       } else {
         // Fallback to API
         console.log('[BATCH_ANALYZE] Sending via API fallback');
