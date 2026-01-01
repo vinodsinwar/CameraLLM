@@ -1031,17 +1031,21 @@
 /* Mobile-specific styles */
 @media (max-width: 768px) {
   .chat-input-form {
-    padding: 1.25rem 1rem;
-    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom) + 20px);
-    gap: 0.5rem;
+    padding: 1.5rem 1rem;
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom) + 50px);
+    gap: 0.75rem;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.2);
+    background: #ffffff;
   }
 
   .capture-button {
-    padding: 1.5rem 2rem;
-    font-size: 1.125rem;
+    padding: 1.75rem 2rem;
+    font-size: 1.25rem;
     min-width: 100%;
     width: 100%;
-    box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+    box-shadow: 0 6px 20px rgba(25, 118, 210, 0.5);
+    font-weight: 700;
+    letter-spacing: 0.5px;
   }
 
   .capture-actions {
@@ -1052,31 +1056,51 @@
 
   .clear-button {
     width: 100%;
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.5rem;
     font-size: 1rem;
+    font-weight: 600;
   }
 
   .chat-messages {
-    padding-bottom: 1rem;
+    padding-bottom: 2rem;
+    margin-bottom: 0;
   }
 
   .welcome-message {
-    padding: 1.5rem 1rem;
+    padding: 2rem 1rem;
+    padding-bottom: 3rem;
   }
 
   .welcome-content h3 {
     font-size: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .welcome-content p {
-    font-size: 0.9375rem;
-    line-height: 1.6;
+    font-size: 1rem;
+    line-height: 1.7;
+    margin-bottom: 0.75rem;
+  }
+
+  .app-header {
+    padding: 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1rem;
   }
 }
 
-/* Ensure button is always visible on mobile */
+/* Extra padding for mobile browsers with bottom navigation */
+@media (max-width: 768px) and (max-height: 900px) {
+  .chat-input-form {
+    padding-bottom: calc(2.5rem + env(safe-area-inset-bottom) + 60px);
+  }
+}
+
+/* Ensure button is always visible on mobile with safe areas */
 @supports (padding: max(0px)) {
   .chat-input-form {
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom) + 1.5rem);
+    padding-bottom: max(2rem, env(safe-area-inset-bottom) + 2rem + 50px);
   }
 }
