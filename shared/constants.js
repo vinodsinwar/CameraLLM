@@ -21,6 +21,12 @@ export const MESSAGE_TYPES = {
   // Receive/Upload request (for testing)
   RECEIVE_REQUEST: 'receive:request',
   RECEIVE_TRIGGERED: 'receive:triggered',
+  RECEIVE_ERROR: 'receive:error',
+  
+  // Batch analysis
+  BATCH_ANALYZE_REQUEST: 'batch:analyze:request',
+  BATCH_ANALYZE_RESPONSE: 'batch:analyze:response',
+  BATCH_ANALYZE_ERROR: 'batch:analyze:error',
   
   // Chat messages
   CHAT_MESSAGE: 'chat:message',

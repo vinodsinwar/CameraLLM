@@ -978,6 +978,19 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  flex-wrap: wrap;
+}
+
+.capture-button.capture-single {
+  background: #1976d2;
+}
+
+.capture-button.capture-multiple {
+  background: #4caf50;
+}
+
+.capture-button.capture-multiple:hover:not(:disabled) {
+  background: #45a049;
 }
 
 .capture-button {

@@ -1,6 +1,7 @@
 import express from 'express';
 import { createPairingSession } from '../services/sessionManager.js';
 import { chatWithContext, analyzeImage } from '../services/llmService.js';
+import { analyzeMultipleImages } from '../services/batchAnalyzeService.js';
 
 const router = express.Router();
 
@@ -107,6 +108,38 @@ router.get('/latest-image', (req, res) => {
     res.json({
       success: false,
       message: 'No image available'
+    });
+  }
+});
+
+// Batch analyze multiple images
+router.post('/batch-analyze', async (req, res) => {
+  try {
+    const { images } = req.body;
+
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Images array is required'
+      });
+    }
+
+    console.log(`[BATCH_ANALYZE] Analyzing ${images.length} images`);
+
+    // Analyze all images at once
+    const analysis = await analyzeMultipleImages(images);
+
+    res.json({
+      success: true,
+      analysis,
+      imageCount: images.length,
+      message: `Analyzed ${images.length} images successfully`
+    });
+  } catch (error) {
+    console.error('Error processing batch analysis:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to process batch analysis'
     });
   }
 });

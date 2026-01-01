@@ -1,6 +1,7 @@
 import { getSession, updateSession, deleteSession } from './sessionManager.js';
 import { startCameraSession, stopCameraSession, isCameraActive, getSessionParticipants } from './cameraService.js';
 import { analyzeImage, chatWithContext } from './llmService.js';
+import { analyzeMultipleImages } from './batchAnalyzeService.js';
 import { encryptMessage, decryptMessage } from '../utils/encryption.js';
 import { MESSAGE_TYPES, WEBSOCKET_EVENTS } from '../../shared/constants.js';
 
@@ -322,6 +323,46 @@ export const initializeSocketIO = (io) => {
       } catch (error) {
         console.error('Error handling chat message:', error);
         socket.emit(MESSAGE_TYPES.CHAT_ERROR, { error: 'Failed to process chat message' });
+      }
+    });
+
+    // Batch analyze multiple images
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, async (data) => {
+      try {
+        const { images } = data;
+
+        if (!images || !Array.isArray(images) || images.length === 0) {
+          socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
+            error: 'No images provided for batch analysis'
+          });
+          return;
+        }
+
+        console.log(`[BATCH_ANALYZE] Received ${images.length} images from ${socket.id}`);
+
+        try {
+          // Analyze all images at once
+          const analysis = await analyzeMultipleImages(images);
+
+          // Send response back to sender
+          socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, {
+            analysis,
+            imageCount: images.length,
+            timestamp: Date.now()
+          });
+
+          console.log(`[BATCH_ANALYZE] Completed analysis for ${images.length} images`);
+        } catch (llmError) {
+          console.error('Error in batch analysis:', llmError);
+          socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
+            error: 'Failed to analyze images: ' + llmError.message
+          });
+        }
+      } catch (error) {
+        console.error('Error handling batch analyze request:', error);
+        socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
+          error: 'Failed to process batch analysis request'
+        });
       }
     });
 

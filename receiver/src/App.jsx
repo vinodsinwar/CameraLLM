@@ -7,15 +7,22 @@ import './App.css';
 function App() {
   const [countdown, setCountdown] = useState(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
+  const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
+  const captureIntervalRef = useRef(null);
+  const multipleCaptureImagesRef = useRef([]);
   const { socket, connected } = useWebSocket();
 
-  // Cleanup countdown on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+      }
+      if (captureIntervalRef.current) {
+        clearInterval(captureIntervalRef.current);
       }
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
@@ -23,8 +30,8 @@ function App() {
     };
   }, [cameraStream]);
 
-  const handleCaptureClick = async () => {
-    if (isCapturing || countdown !== null) return;
+  const handleCaptureSingle = async () => {
+    if (isCapturing || isCapturingMultiple || countdown !== null) return;
 
     setIsCapturing(true);
     let remaining = 5;
@@ -41,6 +48,131 @@ function App() {
         captureImage();
       }
     }, 1000);
+  };
+
+  const handleCaptureMultiple = async () => {
+    if (isCapturing || isCapturingMultiple || countdown !== null) return;
+
+    setIsCapturingMultiple(true);
+    multipleCaptureImagesRef.current = [];
+    setCaptureProgress({ elapsed: 0, total: 60, captured: 0 });
+
+    let remaining = 5;
+    setCountdown(remaining);
+
+    // Start countdown
+    countdownIntervalRef.current = setInterval(() => {
+      remaining -= 1;
+      setCountdown(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(countdownIntervalRef.current);
+        setCountdown(null);
+        startMultipleCapture();
+      }
+    }, 1000);
+  };
+
+  const startMultipleCapture = async () => {
+    try {
+      // Get camera stream once
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment'
+        } 
+      });
+      
+      setCameraStream(stream);
+
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.play();
+
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = () => {
+          resolve();
+        };
+        video.onerror = reject;
+      });
+
+      // Wait a moment for camera to stabilize
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      let elapsed = 0;
+      let captured = 0;
+
+      // Capture every 2 seconds for 1 minute (30 captures)
+      captureIntervalRef.current = setInterval(async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0);
+
+          const imageData = canvas.toDataURL('image/jpeg', 0.85);
+          multipleCaptureImagesRef.current.push(imageData);
+          captured++;
+          elapsed += 2;
+
+          setCaptureProgress({ elapsed, total: 60, captured });
+
+          // After 1 minute, stop capturing and analyze
+          if (elapsed >= 60) {
+            clearInterval(captureIntervalRef.current);
+            
+            // Stop camera stream
+            stream.getTracks().forEach(track => track.stop());
+            setCameraStream(null);
+
+            // Analyze all images at once
+            await analyzeMultipleImages(multipleCaptureImagesRef.current);
+            
+            setIsCapturingMultiple(false);
+            setCaptureProgress(null);
+          }
+        } catch (err) {
+          console.error('Error during multiple capture:', err);
+        }
+      }, 2000); // Every 2 seconds
+
+    } catch (error) {
+      console.error('Error starting multiple capture:', error);
+      setIsCapturingMultiple(false);
+      setCaptureProgress(null);
+      setCountdown(null);
+      alert('Failed to start multiple capture: ' + error.message);
+    }
+  };
+
+  const analyzeMultipleImages = async (images) => {
+    try {
+      setIsCapturing(true);
+      
+      // Send all images to server for batch analysis
+      if (socket) {
+        socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
+          images,
+          timestamp: Date.now()
+        });
+      } else {
+        // Fallback to API
+        const response = await fetch('/api/batch-analyze', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ images })
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Results handled by ChatInterface
+        }
+      }
+    } catch (error) {
+      console.error('Error analyzing multiple images:', error);
+      setIsCapturing(false);
+    }
   };
 
   const captureImage = async () => {
@@ -170,12 +302,29 @@ function App() {
         </div>
       )}
 
+      {/* Multiple capture progress overlay */}
+      {captureProgress !== null && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">{captureProgress.captured}</div>
+            <p className="countdown-text">
+              Captured {captureProgress.captured} images
+              <br />
+              {captureProgress.elapsed}s / {captureProgress.total}s
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main chat interface */}
       <ChatInterface
         socket={socket}
-        onCaptureClick={handleCaptureClick}
+        onCaptureSingle={handleCaptureSingle}
+        onCaptureMultiple={handleCaptureMultiple}
         isCapturing={isCapturing}
+        isCapturingMultiple={isCapturingMultiple}
         countdown={countdown}
+        captureProgress={captureProgress}
       />
     </div>
   );

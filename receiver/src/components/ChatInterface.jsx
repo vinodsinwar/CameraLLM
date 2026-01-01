@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import MessageItem from './MessageItem';
 import { MESSAGE_TYPES } from '@shared/constants.js';
 
-const ChatInterface = ({ socket, onCaptureClick, isCapturing, countdown }) => {
+const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, captureProgress }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -265,15 +265,27 @@ const ChatInterface = ({ socket, onCaptureClick, isCapturing, countdown }) => {
         <div className="capture-actions">
           <button
             type="button"
-            className="capture-button"
-            onClick={onCaptureClick}
-            disabled={isCapturing || countdown !== null || isLoading}
+            className="capture-button capture-single"
+            onClick={onCaptureSingle}
+            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
           >
-            {countdown !== null 
+            {countdown !== null && !isCapturingMultiple
               ? `Capturing in ${countdown}s...`
-              : isCapturing 
+              : isCapturing && !isCapturingMultiple
               ? 'Capturing...'
-              : '📷 Capture Image'}
+              : '📷 CaptureSingle'}
+          </button>
+          <button
+            type="button"
+            className="capture-button capture-multiple"
+            onClick={onCaptureMultiple}
+            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
+          >
+            {isCapturingMultiple
+              ? `Capturing... (${captureProgress?.captured || 0} images)`
+              : countdown !== null && isCapturingMultiple
+              ? `Starting in ${countdown}s...`
+              : '📸 CaptureMultiple'}
           </button>
           {messages.length > 0 && (
             <button
@@ -281,7 +293,7 @@ const ChatInterface = ({ socket, onCaptureClick, isCapturing, countdown }) => {
               className="clear-button"
               onClick={handleClearChat}
               title="Clear Chat"
-              disabled={isCapturing || countdown !== null}
+              disabled={isCapturing || isCapturingMultiple || countdown !== null}
             >
               Clear
             </button>
