@@ -89,7 +89,7 @@ export const analyzeMultipleImages = async (images, progressCallback = null) => 
     // Analyze all images together in one go
     const analysis = await withTimeout(
       analyzeAllImagesTogether(images),
-      300000 // 5 minute timeout for all images
+      60000 // 1 minute timeout for testing
     );
 
     // Emit final progress
