@@ -199,19 +199,7 @@ Do NOT:
 - Give up on finding answers easily - analyze thoroughly
 - Add any other text before or after the list
 
-SUMMARY (at the end):
-After all questions, add a one-line summary in this exact format:
-Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ... X(answer)
-
-Where:
-- Each entry is question number followed by answer in parentheses
-- Single answer: 1(a)
-- Multiple answers: 4(a and b) - use "and" not commas
-- Not visible: 5(not visible)
-- No extra spaces or descriptions
-- Separate entries with comma and space
-
-Return ONLY the output in the exact format specified above, including the summary at the end.`;
+Return ONLY the output in the exact format specified above.`;
 
     // Convert all images to Gemini format
     const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
@@ -322,19 +310,7 @@ Do NOT:
 - Give up on finding answers easily - analyze thoroughly
 - Add any other text before or after the list
 
-SUMMARY (at the end):
-After all questions, add a one-line summary in this exact format:
-Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ... X(answer)
-
-Where:
-- Each entry is question number followed by answer in parentheses
-- Single answer: 1(a)
-- Multiple answers: 4(a and b) - use "and" not commas
-- Not visible: 5(not visible)
-- No extra spaces or descriptions
-- Separate entries with comma and space
-
-Return ONLY the output in the exact format specified above, including the summary at the end.`;
+Return ONLY the output in the exact format specified above.`;
         
         const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
         const parts = [
@@ -456,6 +432,13 @@ const formatBatchAnalysis = (analysis) => {
     output.push(`Answer: ${q.answer || 'not visible'}`);
     output.push(''); // Empty line between questions
   });
+
+  // Generate summary
+  const summaryParts = uniqueQuestions.map((q, index) => {
+    const answer = q.answer || 'not visible';
+    return `${index + 1}(${answer})`;
+  });
+  output.push(`Summary: ${summaryParts.join(', ')}`);
 
   return output.join('\n');
 };
