@@ -242,13 +242,66 @@ Return ONLY the output in the exact format specified above.`;
 
     return formattedAnalysis;
   } catch (error) {
-    console.error('Error analyzing multiple images:', error);
+    console.error('Error analyzing batch:', error);
     
     // Fallback: try with gemini-2.5-flash if gemini-3-flash fails
     if (error.message && (error.message.includes('gemini-3-flash') || error.message.includes('404'))) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        // Recreate prompt for fallback
+        const imageCountText = totalImageCount ? `${images.length} images (part of ${totalImageCount} total)` : `${images.length} images`;
+        const prompt = `You are analyzing ${imageCountText} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
+
+IMPORTANT NOTES:
+- A single question may appear partially across multiple images (split across screenshots)
+- Some questions may appear more than once (duplicate screenshots)
+- Some images may contain overlapping or missing text
+- Questions may be cut off or split between images
+
+YOUR TASK:
+1. Analyze ALL images together as one cohesive set
+2. Identify ALL unique questions by:
+   - Merging partial or split question text across images
+   - Combining text fragments that belong to the same question
+   - Removing duplicate questions (same question appearing in multiple images)
+3. For each final unique question:
+   - Analyze the question and find the answer from the multiple choice options
+   - Identify the correct answer(s) ONLY if visible or clearly inferable
+   - If the answer is NOT visible or cannot be determined, state "Answer not visible"
+
+OUTPUT FORMAT (EXACTLY as shown):
+total number of questions : X
+
+question 1 - answer a
+question 2 - answer a and b
+question 3 - answer d
+question 4 - answer not visible
+question 5 - answer c
+...
+
+CRITICAL RULES:
+- Start with "total number of questions : X" where X is the count of unique questions
+- Use lowercase: "question X - answer Y" (not "Question" or "Answer")
+- For single answer: "question 1 - answer a"
+- For multiple answers: "question 2 - answer a and b" (use "and" not commas)
+- If answer not visible: "question 4 - answer not visible"
+- NO explanations, NO descriptions, NO code blocks
+- NO duplicate questions (each question appears only once)
+- Merge partial questions that are split across images
+- Number questions sequentially starting from 1
+
+Do NOT:
+- Describe the images or screenshots
+- Provide explanations or reasoning
+- Show code or calculations
+- Include duplicate questions
+- Use "Question" or "Answer" (use lowercase)
+- Add any other text before or after the list
+
+Return ONLY the output in the exact format specified above.`;
+        
         const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
         const parts = [
           { text: prompt },
