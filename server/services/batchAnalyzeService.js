@@ -124,52 +124,70 @@ IMPORTANT NOTES:
 - Some questions may appear more than once (duplicate screenshots)
 - Some images may contain overlapping or missing text
 - Questions may be cut off or split between images
+- Options (A, B, C, D, etc.) may appear on different images than the question text
 
 YOUR TASK:
 1. Analyze ALL images together as one cohesive set to get full context
 2. Identify ALL unique questions by:
    - Merging partial or split question text across images
    - Combining text fragments that belong to the same question
+   - Finding ALL multiple choice options (A, B, C, D, E, etc.) for each question
+   - Options may appear on the same image or different images - search ALL images
    - Removing duplicate questions (same question appearing in multiple images)
 3. For each final unique question:
    - Write the COMPLETE question text
-   - Find the answer from the multiple choice options
-   - Identify the correct answer(s) ONLY if visible or clearly inferable
-   - If the answer is NOT visible or cannot be determined, state "Answer not visible"
+   - Write ALL available options (A, B, C, D, etc.) with their text
+   - Find the answer by analyzing the question and options carefully
+   - You MUST find the answer - look carefully across all images
+   - Use reasoning, logic, and knowledge to determine the answer if not explicitly marked
+   - Only use "not visible" if the question or ALL options are completely unreadable
+   - Do NOT give up easily - analyze thoroughly to find answers
    - Do NOT provide explanations for the answer
 
 OUTPUT FORMAT (EXACTLY as shown):
 total number of questions : X
 
 Question 1: [Complete question text here]
+Options:
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
+D) [Option D text]
 Answer: a
 
 Question 2: [Complete question text here]
+Options:
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
+D) [Option D text]
+E) [Option E text]
 Answer: a and b
 
 Question 3: [Complete question text here]
+Options:
+A) [Option A text]
+B) [Option B text]
+C) [Option C text]
 Answer: d
-
-Question 4: [Complete question text here]
-Answer: not visible
-
-Question 5: [Complete question text here]
-Answer: c
 
 ...
 
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
+- Then write "Options:" followed by ALL options (A, B, C, D, etc.) with their complete text
 - Then write "Answer:" followed by the answer(s)
 - For single answer: "Answer: a"
 - For multiple answers: "Answer: a and b" (use "and" not commas)
-- If answer not visible: "Answer: not visible"
+- You MUST include ALL options for each question - search all images carefully
+- You MUST find answers - analyze questions and options to determine correct answer
+- Only use "Answer: not visible" if question or ALL options are completely unreadable
 - NO explanations for answers
 - NO descriptions of images
 - NO code blocks
 - NO duplicate questions (each question appears only once)
-- Merge partial questions that are split across images
+- Merge partial questions and options that are split across images
 - Number questions sequentially starting from 1
 
 Do NOT:
@@ -177,6 +195,8 @@ Do NOT:
 - Provide explanations or reasoning for answers
 - Show code or calculations
 - Include duplicate questions
+- Skip options - you must find ALL options for each question
+- Give up on finding answers easily - analyze thoroughly
 - Add any other text before or after the list
 
 Return ONLY the output in the exact format specified above.`;
@@ -365,6 +385,12 @@ const formatBatchAnalysis = (analysis) => {
   
   uniqueQuestions.forEach((q, index) => {
     output.push(`Question ${index + 1}: ${q.text}`);
+    if (q.options && q.options.length > 0) {
+      output.push('Options:');
+      q.options.forEach(opt => {
+        output.push(`${opt.letter}) ${opt.text}`);
+      });
+    }
     output.push(`Answer: ${q.answer || 'not visible'}`);
     output.push(''); // Empty line between questions
   });
