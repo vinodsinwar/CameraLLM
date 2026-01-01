@@ -411,6 +411,20 @@ function App() {
         </div>
       )}
 
+      {/* Analysis in progress overlay */}
+      {isCapturing && !isCapturingMultiple && captureProgress === null && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">⏳</div>
+            <p className="countdown-text">
+              Analyzing images...
+              <br />
+              Please wait
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Main chat interface */}
       <ChatInterface
         socket={socket}
