@@ -173,8 +173,6 @@ Answer: d
 
 ...
 
-Summary: 1(a), 2(a and b), 3(d), 4(not visible), 5(c), ...
-
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
@@ -191,10 +189,6 @@ CRITICAL RULES:
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
 - Number questions sequentially starting from 1
-- At the END, add a "Summary:" line with all question numbers and their answers in format: "Summary: 1(a), 2(b), 3(a and b), 4(not visible), ..."
-- Summary format: question number in parentheses with answer, separated by commas
-- For multiple answers in summary: use "a and b" format (same as in Answer line)
-- For not visible in summary: use "not visible"
 
 Do NOT:
 - Describe the images or screenshots
@@ -203,9 +197,9 @@ Do NOT:
 - Include duplicate questions
 - Skip options - you must find ALL options for each question
 - Give up on finding answers easily - analyze thoroughly
-- Add any other text before the list or after the Summary
+- Add any other text before or after the list
 
-Return ONLY the output in the exact format specified above, including the Summary at the end.`;
+Return ONLY the output in the exact format specified above.`;
 
     // Convert all images to Gemini format
     const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
@@ -290,8 +284,6 @@ Answer: d
 
 ...
 
-Summary: 1(a), 2(a and b), 3(d), 4(not visible), 5(c), ...
-
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
@@ -308,10 +300,6 @@ CRITICAL RULES:
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
 - Number questions sequentially starting from 1
-- At the END, add a "Summary:" line with all question numbers and their answers in format: "Summary: 1(a), 2(b), 3(a and b), 4(not visible), ..."
-- Summary format: question number in parentheses with answer, separated by commas
-- For multiple answers in summary: use "a and b" format (same as in Answer line)
-- For not visible in summary: use "not visible"
 
 Do NOT:
 - Describe the images or screenshots
@@ -320,9 +308,9 @@ Do NOT:
 - Include duplicate questions
 - Skip options - you must find ALL options for each question
 - Give up on finding answers easily - analyze thoroughly
-- Add any other text before the list or after the Summary
+- Add any other text before or after the list
 
-Return ONLY the output in the exact format specified above, including the Summary at the end.`;
+Return ONLY the output in the exact format specified above.`;
         
         const imageParts = images.map(img => convertBase64ToGeminiFormat(img));
         const parts = [
@@ -430,8 +418,20 @@ const formatBatchAnalysis = (analysis) => {
   // Sort by question number and renumber sequentially
   uniqueQuestions.sort((a, b) => a.number - b.number);
   
+  // Build summary: "Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ..."
+  const summaryParts = uniqueQuestions.map((q, index) => {
+    const answer = q.answer || 'not visible';
+    return `${index + 1}(${answer})`;
+  });
+  const summary = `Summary: ${summaryParts.join(', ')}`;
+  
   // Build output
-  const output = [`total number of questions : ${uniqueQuestions.length}`, ''];
+  const output = [
+    `total number of questions : ${uniqueQuestions.length}`,
+    '',
+    summary,
+    ''
+  ];
   
   uniqueQuestions.forEach((q, index) => {
     output.push(`Question ${index + 1}: ${q.text}`);
@@ -444,13 +444,6 @@ const formatBatchAnalysis = (analysis) => {
     output.push(`Answer: ${q.answer || 'not visible'}`);
     output.push(''); // Empty line between questions
   });
-
-  // Generate summary
-  const summaryParts = uniqueQuestions.map((q, index) => {
-    const answer = q.answer || 'not visible';
-    return `${index + 1}(${answer})`;
-  });
-  output.push(`Summary: ${summaryParts.join(', ')}`);
 
   return output.join('\n');
 };

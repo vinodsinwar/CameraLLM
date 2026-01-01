@@ -184,14 +184,46 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
     };
   }, [socket]);
 
-  // Optimize scroll - only scroll when new message is added, not on every render
+  // Track if user has scrolled manually - don't auto-scroll if they're reading
+  const chatMessagesRef = useRef(null);
+  const userHasScrolledRef = useRef(false);
   const prevMessagesLength = useRef(0);
+  
+  // Check if user is near bottom of chat (within 100px)
+  const isNearBottom = () => {
+    if (!chatMessagesRef.current) return false;
+    const { scrollTop, scrollHeight, clientHeight } = chatMessagesRef.current;
+    return scrollHeight - scrollTop - clientHeight < 100;
+  };
+
+  // Track user scroll to detect manual scrolling
+  useEffect(() => {
+    const chatMessages = chatMessagesRef.current;
+    if (!chatMessages) return;
+
+    const handleScroll = () => {
+      // If user scrolls up, mark that they're reading
+      if (!isNearBottom()) {
+        userHasScrolledRef.current = true;
+      } else {
+        // If they scroll back to bottom, allow auto-scroll again
+        userHasScrolledRef.current = false;
+      }
+    };
+
+    chatMessages.addEventListener('scroll', handleScroll);
+    return () => chatMessages.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Only auto-scroll if user hasn't manually scrolled up
   useEffect(() => {
     if (messages.length > prevMessagesLength.current) {
-      // Use requestAnimationFrame for smoother scrolling
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      });
+      // Only auto-scroll if user is at or near bottom
+      if (!userHasScrolledRef.current || isNearBottom()) {
+        requestAnimationFrame(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        });
+      }
     }
     prevMessagesLength.current = messages.length;
   }, [messages.length]);
