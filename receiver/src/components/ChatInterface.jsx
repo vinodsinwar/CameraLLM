@@ -112,16 +112,62 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
       setIsLoading(false);
     };
 
+    const handleBatchAnalyzeResponse = (data) => {
+      console.log('[BATCH_ANALYZE] Response received:', data);
+      const { analysis, error } = data;
+      
+      if (error) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'error',
+            content: error,
+            timestamp: new Date()
+          }
+        ]);
+      } else if (analysis) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'assistant',
+            content: analysis,
+            timestamp: new Date()
+          }
+        ]);
+      }
+      setIsLoading(false);
+    };
+
+    const handleBatchAnalyzeError = (data) => {
+      console.error('[BATCH_ANALYZE] Error:', data);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: 'error',
+          content: data.error || 'Failed to analyze images',
+          timestamp: new Date()
+        }
+      ]);
+      setIsLoading(false);
+    };
+
     socket.on(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
     socket.on(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
     socket.on(MESSAGE_TYPES.CHAT_RESPONSE, handleChatResponse);
     socket.on(MESSAGE_TYPES.CHAT_ERROR, handleChatError);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
 
     return () => {
       socket.off(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
       socket.off(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
       socket.off(MESSAGE_TYPES.CHAT_RESPONSE, handleChatResponse);
       socket.off(MESSAGE_TYPES.CHAT_ERROR, handleChatError);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
     };
   }, [socket]);
 
