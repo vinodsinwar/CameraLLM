@@ -338,12 +338,17 @@ export const initializeSocketIO = (io) => {
           return;
         }
 
+        // Calculate payload size
+        const payloadSize = JSON.stringify(data).length;
         console.log(`[BATCH_ANALYZE] Received ${images.length} images from ${socket.id}`);
+        console.log(`[BATCH_ANALYZE] Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)} MB`);
 
         try {
+          console.log(`[BATCH_ANALYZE] Starting analysis...`);
           // Analyze all images at once
           const analysis = await analyzeMultipleImages(images);
 
+          console.log(`[BATCH_ANALYZE] Analysis complete, sending response...`);
           // Send response back to sender
           socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, {
             analysis,
@@ -351,17 +356,17 @@ export const initializeSocketIO = (io) => {
             timestamp: Date.now()
           });
 
-          console.log(`[BATCH_ANALYZE] Completed analysis for ${images.length} images`);
+          console.log(`[BATCH_ANALYZE] Response sent for ${images.length} images`);
         } catch (llmError) {
-          console.error('Error in batch analysis:', llmError);
+          console.error('[BATCH_ANALYZE] Error in batch analysis:', llmError);
           socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
             error: 'Failed to analyze images: ' + llmError.message
           });
         }
       } catch (error) {
-        console.error('Error handling batch analyze request:', error);
+        console.error('[BATCH_ANALYZE] Error handling batch analyze request:', error);
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, {
-          error: 'Failed to process batch analysis request'
+          error: 'Failed to process batch analysis request: ' + error.message
         });
       }
     });

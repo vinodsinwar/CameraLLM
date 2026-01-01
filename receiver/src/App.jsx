@@ -73,6 +73,36 @@ function App() {
     }, 1000);
   };
 
+  // Optimize image: resize and compress
+  const optimizeImage = (imageData, maxWidth = 1280, maxHeight = 720, quality = 0.7) => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions maintaining aspect ratio
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.floor(width * ratio);
+          height = Math.floor(height * ratio);
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to base64 with compression
+        const optimizedData = canvas.toDataURL('image/jpeg', quality);
+        resolve(optimizedData);
+      };
+      img.onerror = () => resolve(imageData); // Fallback to original if optimization fails
+      img.src = imageData;
+    });
+  };
+
   const startMultipleCapture = async () => {
     try {
       // Get camera stream once
@@ -105,9 +135,13 @@ function App() {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg', 0.85);
-        multipleCaptureImagesRef.current.push(imageData);
+        const rawImageData = canvas.toDataURL('image/jpeg', 0.85);
+        
+        // Optimize image before storing
+        const optimizedImage = await optimizeImage(rawImageData);
+        multipleCaptureImagesRef.current.push(optimizedImage);
         setCaptureProgress({ elapsed: 0, total: 60, captured: 1 });
+        console.log(`[CAPTURE] Image 1 captured and optimized. Size: ${(optimizedImage.length / 1024).toFixed(2)} KB`);
       } catch (err) {
         console.error('Error capturing first image:', err);
       }
@@ -124,12 +158,16 @@ function App() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(video, 0, 0);
 
-          const imageData = canvas.toDataURL('image/jpeg', 0.85);
-          multipleCaptureImagesRef.current.push(imageData);
+          const rawImageData = canvas.toDataURL('image/jpeg', 0.85);
+          
+          // Optimize image before storing
+          const optimizedImage = await optimizeImage(rawImageData);
+          multipleCaptureImagesRef.current.push(optimizedImage);
           captured++;
           elapsed += 2;
 
           setCaptureProgress({ elapsed, total: 60, captured });
+          console.log(`[CAPTURE] Image ${captured} captured and optimized. Size: ${(optimizedImage.length / 1024).toFixed(2)} KB`);
 
           // After 1 minute (60 seconds), stop capturing and analyze
           if (elapsed >= 60) {
@@ -139,16 +177,22 @@ function App() {
             stream.getTracks().forEach(track => track.stop());
             setCameraStream(null);
 
-            // Analyze all images at once
-            console.log(`[BATCH_ANALYZE] Capture complete. Total images: ${multipleCaptureImagesRef.current.length}`);
+            // Calculate total size
+            const totalSize = multipleCaptureImagesRef.current.reduce((sum, img) => sum + img.length, 0);
+            console.log(`[BATCH_ANALYZE] Capture complete. Total images: ${multipleCaptureImagesRef.current.length}, Total size: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+            
+            // Clear progress overlay and show analyzing state
+            setCaptureProgress(null);
+            setIsCapturingMultiple(false);
             
             if (multipleCaptureImagesRef.current.length > 0) {
+              // Start analysis
+              console.log('[BATCH_ANALYZE] Starting analysis...');
               await analyzeMultipleImages(multipleCaptureImagesRef.current);
             } else {
               console.warn('[BATCH_ANALYZE] No images captured!');
-              setIsCapturingMultiple(false);
-              setCaptureProgress(null);
               setIsCapturing(false);
+              alert('No images were captured. Please try again.');
             }
           }
         } catch (err) {
