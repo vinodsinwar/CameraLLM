@@ -329,6 +329,7 @@ function App() {
       setIsCapturing(false);
       setIsCapturingMultiple(false);
       setCaptureProgress(null);
+      setAnalysisProgress(null);
       alert('Failed to analyze images via API: ' + apiError.message);
     }
   };
