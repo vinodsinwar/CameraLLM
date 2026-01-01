@@ -253,14 +253,14 @@ function App() {
         console.log(`[BATCH_ANALYZE] Cleanup complete. Success: ${success}`);
       };
       
-      // Set timeout (5 minutes)
+      // Set timeout (1 minute for testing)
       timeoutId = setTimeout(() => {
-        console.error('[BATCH_ANALYZE] Timeout after 5 minutes');
+        console.error('[BATCH_ANALYZE] Timeout after 1 minute');
         cleanup(false);
-        alert('Analysis timed out after 5 minutes. Trying API fallback...');
+        alert('Analysis timed out after 1 minute. Trying API fallback...');
         // Try API fallback
         tryApiFallback(images);
-      }, 5 * 60 * 1000);
+      }, 1 * 60 * 1000);
       
       // Listen for completion event from ChatInterface
       const handleComplete = (event) => {
