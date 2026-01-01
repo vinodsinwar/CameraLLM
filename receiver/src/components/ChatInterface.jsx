@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import MessageItem from './MessageItem';
 import { MESSAGE_TYPES } from '@shared/constants.js';
 
-const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, captureProgress }) => {
+const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, captureProgress, onClearChat }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -58,17 +58,22 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
         imageContextRef.current = imageData;
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          type: 'image',
-          imageData,
-          analysis,
-          error,
-          timestamp: new Date()
-        }
-      ]);
+      setMessages((prev) => {
+        const newMessages = [
+          ...prev,
+          {
+            id: Date.now(),
+            type: 'image',
+            imageData,
+            analysis,
+            error,
+            timestamp: new Date()
+          }
+        ];
+        // Notify parent about messages
+        window.dispatchEvent(new CustomEvent('messagesUpdated', { detail: { count: newMessages.length } }));
+        return newMessages;
+      });
       setIsLoading(false);
     };
 
@@ -286,12 +291,19 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
     setMessages([]);
     seenImageIdsRef.current.clear(); // Clear seen image IDs so images can be shown again
     imageContextRef.current = null; // Clear image context
+    window.dispatchEvent(new CustomEvent('messagesUpdated', { detail: { count: 0 } }));
+    if (onClearChat) {
+      onClearChat();
+    }
   };
+
+  // Notify parent when messages change
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('messagesUpdated', { detail: { count: messages.length } }));
+  }, [messages.length]);
 
   return (
     <div className="chat-interface">
-      {/* No floating buttons needed - camera activation is in header */}
-
       <div className="chat-messages">
         {showWelcomeMessage && (
           <div className="welcome-message">
@@ -319,48 +331,6 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
 
         <div ref={messagesEndRef} />
       </div>
-
-      <form className="chat-input-form" onSubmit={(e) => e.preventDefault()}>
-        <div className="capture-actions">
-          <button
-            type="button"
-            className="capture-button capture-single"
-            onClick={onCaptureSingle}
-            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
-            title="Capture Single Image"
-          >
-            {countdown !== null && !isCapturingMultiple
-              ? `${countdown}`
-              : isCapturing && !isCapturingMultiple
-              ? '...'
-              : '1'}
-          </button>
-          <button
-            type="button"
-            className="capture-button capture-multiple"
-            onClick={onCaptureMultiple}
-            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
-            title="Capture Multiple Images"
-          >
-            {isCapturingMultiple
-              ? `${captureProgress?.captured || 0}`
-              : countdown !== null && isCapturingMultiple
-              ? `${countdown}`
-              : '2'}
-          </button>
-          {messages.length > 0 && (
-            <button
-              type="button"
-              className="clear-button"
-              onClick={handleClearChat}
-              title="Clear Chat"
-              disabled={isCapturing || isCapturingMultiple || countdown !== null}
-            >
-              X
-            </button>
-          )}
-        </div>
-      </form>
     </div>
   );
 };
