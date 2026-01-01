@@ -327,24 +327,26 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
             className="capture-button capture-single"
             onClick={onCaptureSingle}
             disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
+            title="Capture Single Image"
           >
             {countdown !== null && !isCapturingMultiple
-              ? `Capturing in ${countdown}s...`
+              ? `${countdown}`
               : isCapturing && !isCapturingMultiple
-              ? 'Capturing...'
-              : '📷 CaptureSingle'}
+              ? '...'
+              : '1'}
           </button>
           <button
             type="button"
             className="capture-button capture-multiple"
             onClick={onCaptureMultiple}
             disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
+            title="Capture Multiple Images"
           >
             {isCapturingMultiple
-              ? `Capturing... (${captureProgress?.captured || 0} images)`
+              ? `${captureProgress?.captured || 0}`
               : countdown !== null && isCapturingMultiple
-              ? `Starting in ${countdown}s...`
-              : '📸 CaptureMultiple'}
+              ? `${countdown}`
+              : '2'}
           </button>
           {messages.length > 0 && (
             <button
@@ -354,7 +356,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
               title="Clear Chat"
               disabled={isCapturing || isCapturingMultiple || countdown !== null}
             >
-              Clear
+              X
             </button>
           )}
         </div>
