@@ -169,7 +169,8 @@ export const analyzeMultipleImages = async (images, progressCallback = null) => 
  * Analyze a single batch of images
  */
 const analyzeBatch = async (images, totalImageCount = null) => {
-  const model = getGeminiClient();
+  try {
+    const model = getGeminiClient();
 
     // Prepare prompt for batch analysis
     const imageCountText = totalImageCount ? `${images.length} images (part of ${totalImageCount} total)` : `${images.length} images`;
