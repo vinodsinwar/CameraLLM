@@ -126,10 +126,16 @@ function App() {
             setCameraStream(null);
 
             // Analyze all images at once
-            await analyzeMultipleImages(multipleCaptureImagesRef.current);
+            console.log(`[BATCH_ANALYZE] Capture complete. Total images: ${multipleCaptureImagesRef.current.length}`);
             
-            setIsCapturingMultiple(false);
-            setCaptureProgress(null);
+            if (multipleCaptureImagesRef.current.length > 0) {
+              await analyzeMultipleImages(multipleCaptureImagesRef.current);
+            } else {
+              console.warn('[BATCH_ANALYZE] No images captured!');
+              setIsCapturingMultiple(false);
+              setCaptureProgress(null);
+              setIsCapturing(false);
+            }
           }
         } catch (err) {
           console.error('Error during multiple capture:', err);
