@@ -9,6 +9,7 @@ function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
   const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
+  const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
   const captureIntervalRef = useRef(null);
@@ -229,6 +230,7 @@ function App() {
         setIsCapturing(false);
         setIsCapturingMultiple(false);
         setCaptureProgress(null);
+        setAnalysisProgress(null);
         console.log(`[BATCH_ANALYZE] Cleanup complete. Success: ${success}`);
       };
       
@@ -425,12 +427,19 @@ function App() {
       setCountdown(null);
     };
 
+    const handleBatchAnalyzeProgress = (data) => {
+      console.log('[BATCH_ANALYZE] Progress update:', data);
+      setAnalysisProgress(data);
+    };
+
     socket.on(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
     socket.on(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_PROGRESS, handleBatchAnalyzeProgress);
 
     return () => {
       socket.off(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
       socket.off(MESSAGE_TYPES.CAPTURE_ERROR, handleCaptureError);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_PROGRESS, handleBatchAnalyzeProgress);
     };
   }, [socket]);
 
@@ -476,12 +485,33 @@ function App() {
       {isCapturing && !isCapturingMultiple && captureProgress === null && (
         <div className="countdown-overlay">
           <div className="countdown-content">
-            <div className="countdown-number">⏳</div>
-            <p className="countdown-text">
-              Analyzing images...
-              <br />
-              Please wait
-            </p>
+            {analysisProgress ? (
+              <>
+                <div className="countdown-number">
+                  {analysisProgress.currentBatch || 0}/{analysisProgress.totalBatches || 0}
+                </div>
+                <p className="countdown-text">
+                  {analysisProgress.message || 'Analyzing images...'}
+                  {analysisProgress.totalImages && (
+                    <>
+                      <br />
+                      <span style={{ fontSize: '0.8em', opacity: 0.8 }}>
+                        {analysisProgress.processedImages || 0} / {analysisProgress.totalImages} images processed
+                      </span>
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="countdown-number">⏳</div>
+                <p className="countdown-text">
+                  Analyzing images...
+                  <br />
+                  Please wait
+                </p>
+              </>
+            )}
           </div>
         </div>
       )}

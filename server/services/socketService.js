@@ -345,8 +345,18 @@ export const initializeSocketIO = (io) => {
 
         try {
           console.log(`[BATCH_ANALYZE] Starting analysis...`);
-          // Analyze all images at once
-          const analysis = await analyzeMultipleImages(images);
+          
+          // Progress callback to emit real-time updates
+          const progressCallback = (progress) => {
+            socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_PROGRESS, {
+              ...progress,
+              timestamp: Date.now()
+            });
+            console.log(`[BATCH_ANALYZE] Progress: ${progress.message}`);
+          };
+          
+          // Analyze all images at once with progress updates
+          const analysis = await analyzeMultipleImages(images, progressCallback);
 
           console.log(`[BATCH_ANALYZE] Analysis complete, sending response...`);
           // Send response back to sender

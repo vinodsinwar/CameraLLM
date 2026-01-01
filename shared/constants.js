@@ -27,6 +27,7 @@ export const MESSAGE_TYPES = {
   BATCH_ANALYZE_REQUEST: 'batch:analyze:request',
   BATCH_ANALYZE_RESPONSE: 'batch:analyze:response',
   BATCH_ANALYZE_ERROR: 'batch:analyze:error',
+  BATCH_ANALYZE_PROGRESS: 'batch:analyze:progress',
   
   // Chat messages
   CHAT_MESSAGE: 'chat:message',

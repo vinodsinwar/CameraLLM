@@ -143,6 +143,11 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
       window.dispatchEvent(new CustomEvent('batchAnalyzeComplete', { detail: { success: !error } }));
     };
 
+    const handleBatchAnalyzeProgress = (data) => {
+      // Progress is handled by App.jsx, but we can log it here too
+      console.log('[BATCH_ANALYZE] Progress in ChatInterface:', data);
+    };
+
     const handleBatchAnalyzeError = (data) => {
       console.error('[BATCH_ANALYZE] Error in ChatInterface:', data);
       setMessages((prev) => [
@@ -166,6 +171,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
     socket.on(MESSAGE_TYPES.CHAT_ERROR, handleChatError);
     socket.on(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
     socket.on(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
+    socket.on(MESSAGE_TYPES.BATCH_ANALYZE_PROGRESS, handleBatchAnalyzeProgress);
 
     return () => {
       socket.off(MESSAGE_TYPES.CAPTURE_RESPONSE, handleCaptureResponse);
@@ -174,6 +180,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
       socket.off(MESSAGE_TYPES.CHAT_ERROR, handleChatError);
       socket.off(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, handleBatchAnalyzeResponse);
       socket.off(MESSAGE_TYPES.BATCH_ANALYZE_ERROR, handleBatchAnalyzeError);
+      socket.off(MESSAGE_TYPES.BATCH_ANALYZE_PROGRESS, handleBatchAnalyzeProgress);
     };
   }, [socket]);
 

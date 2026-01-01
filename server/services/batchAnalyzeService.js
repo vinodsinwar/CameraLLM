@@ -54,8 +54,9 @@ const withTimeout = (promise, timeoutMs = 120000) => {
 /**
  * Analyze multiple images and return concise Q&A format
  * Splits into batches if too many images
+ * @param {Function} progressCallback - Optional callback for progress updates
  */
-export const analyzeMultipleImages = async (images) => {
+export const analyzeMultipleImages = async (images, progressCallback = null) => {
   try {
     const model = getGeminiClient();
 
@@ -72,11 +73,38 @@ export const analyzeMultipleImages = async (images) => {
 
     console.log(`[BATCH_ANALYZE] Processing ${images.length} images in ${batches.length} batch(es)`);
 
+    // Emit initial progress
+    if (progressCallback) {
+      progressCallback({
+        stage: 'initializing',
+        message: `Preparing to analyze ${images.length} images...`,
+        totalBatches: batches.length,
+        currentBatch: 0,
+        totalImages: images.length,
+        processedImages: 0
+      });
+    }
+
     // Process batches sequentially and combine results
     const allResults = [];
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
+      const processedImages = batchIndex * BATCH_SIZE;
+      
       console.log(`[BATCH_ANALYZE] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} images)`);
+      
+      // Emit batch start progress
+      if (progressCallback) {
+        progressCallback({
+          stage: 'analyzing',
+          message: `Analyzing batch ${batchIndex + 1} of ${batches.length}...`,
+          totalBatches: batches.length,
+          currentBatch: batchIndex + 1,
+          totalImages: images.length,
+          processedImages: processedImages,
+          currentBatchImages: batch.length
+        });
+      }
       
       try {
         const batchResult = await withTimeout(
@@ -84,11 +112,49 @@ export const analyzeMultipleImages = async (images) => {
           120000 // 2 minute timeout per batch
         );
         allResults.push(batchResult);
+        
+        // Emit batch complete progress
+        if (progressCallback) {
+          progressCallback({
+            stage: 'analyzing',
+            message: `Completed batch ${batchIndex + 1} of ${batches.length}`,
+            totalBatches: batches.length,
+            currentBatch: batchIndex + 1,
+            totalImages: images.length,
+            processedImages: processedImages + batch.length,
+            currentBatchImages: batch.length
+          });
+        }
       } catch (batchError) {
         console.error(`[BATCH_ANALYZE] Error in batch ${batchIndex + 1}:`, batchError);
         // Continue with other batches even if one fails
         allResults.push(`\n[Batch ${batchIndex + 1} failed: ${batchError.message}]\n`);
+        
+        // Emit batch error progress
+        if (progressCallback) {
+          progressCallback({
+            stage: 'error',
+            message: `Batch ${batchIndex + 1} failed, continuing...`,
+            totalBatches: batches.length,
+            currentBatch: batchIndex + 1,
+            totalImages: images.length,
+            processedImages: processedImages + batch.length,
+            error: batchError.message
+          });
+        }
       }
+    }
+
+    // Emit final progress
+    if (progressCallback) {
+      progressCallback({
+        stage: 'finalizing',
+        message: 'Combining results...',
+        totalBatches: batches.length,
+        currentBatch: batches.length,
+        totalImages: images.length,
+        processedImages: images.length
+      });
     }
 
     // Combine all batch results
