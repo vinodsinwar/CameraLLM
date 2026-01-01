@@ -498,16 +498,14 @@ function App() {
           <div className="countdown-content">
             {analysisProgress ? (
               <>
-                <div className="countdown-number">
-                  {analysisProgress.currentBatch || 0}/{analysisProgress.totalBatches || 0}
-                </div>
+                <div className="countdown-number">⏳</div>
                 <p className="countdown-text">
                   {analysisProgress.message || 'Analyzing images...'}
                   {analysisProgress.totalImages && (
                     <>
                       <br />
                       <span style={{ fontSize: '0.8em', opacity: 0.8 }}>
-                        {analysisProgress.processedImages || 0} / {analysisProgress.totalImages} images processed
+                        Processing {analysisProgress.totalImages} images together...
                       </span>
                     </>
                   )}

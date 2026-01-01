@@ -52,8 +52,8 @@ const withTimeout = (promise, timeoutMs = 120000) => {
 };
 
 /**
- * Analyze multiple images and return concise Q&A format
- * Splits into batches if too many images
+ * Analyze multiple images and return Q&A format with full questions
+ * Analyzes all images together for proper context
  * @param {Function} progressCallback - Optional callback for progress updates
  */
 export const analyzeMultipleImages = async (images, progressCallback = null) => {
@@ -64,101 +64,45 @@ export const analyzeMultipleImages = async (images, progressCallback = null) => 
       throw new Error('No images provided');
     }
 
-    // Gemini API has limits - process in batches of 10 images
-    const BATCH_SIZE = 10;
-    const batches = [];
-    for (let i = 0; i < images.length; i += BATCH_SIZE) {
-      batches.push(images.slice(i, i + BATCH_SIZE));
-    }
-
-    console.log(`[BATCH_ANALYZE] Processing ${images.length} images in ${batches.length} batch(es)`);
+    console.log(`[BATCH_ANALYZE] Processing ${images.length} images all together`);
 
     // Emit initial progress
     if (progressCallback) {
       progressCallback({
         stage: 'initializing',
         message: `Preparing to analyze ${images.length} images...`,
-        totalBatches: batches.length,
-        currentBatch: 0,
         totalImages: images.length,
         processedImages: 0
       });
     }
 
-    // Process batches sequentially and combine results
-    const allResults = [];
-    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-      const batch = batches[batchIndex];
-      const processedImages = batchIndex * BATCH_SIZE;
-      
-      console.log(`[BATCH_ANALYZE] Processing batch ${batchIndex + 1}/${batches.length} (${batch.length} images)`);
-      
-      // Emit batch start progress
-      if (progressCallback) {
-        progressCallback({
-          stage: 'analyzing',
-          message: `Analyzing batch ${batchIndex + 1} of ${batches.length}...`,
-          totalBatches: batches.length,
-          currentBatch: batchIndex + 1,
-          totalImages: images.length,
-          processedImages: processedImages,
-          currentBatchImages: batch.length
-        });
-      }
-      
-      try {
-        const batchResult = await withTimeout(
-          analyzeBatch(batch, batchIndex === 0 ? images.length : null),
-          120000 // 2 minute timeout per batch
-        );
-        allResults.push(batchResult);
-        
-        // Emit batch complete progress
-        if (progressCallback) {
-          progressCallback({
-            stage: 'analyzing',
-            message: `Completed batch ${batchIndex + 1} of ${batches.length}`,
-            totalBatches: batches.length,
-            currentBatch: batchIndex + 1,
-            totalImages: images.length,
-            processedImages: processedImages + batch.length,
-            currentBatchImages: batch.length
-          });
-        }
-      } catch (batchError) {
-        console.error(`[BATCH_ANALYZE] Error in batch ${batchIndex + 1}:`, batchError);
-        // Continue with other batches even if one fails
-        allResults.push(`\n[Batch ${batchIndex + 1} failed: ${batchError.message}]\n`);
-        
-        // Emit batch error progress
-        if (progressCallback) {
-          progressCallback({
-            stage: 'error',
-            message: `Batch ${batchIndex + 1} failed, continuing...`,
-            totalBatches: batches.length,
-            currentBatch: batchIndex + 1,
-            totalImages: images.length,
-            processedImages: processedImages + batch.length,
-            error: batchError.message
-          });
-        }
-      }
-    }
-
-    // Emit final progress
+    // Emit analyzing progress
     if (progressCallback) {
       progressCallback({
-        stage: 'finalizing',
-        message: 'Combining results...',
-        totalBatches: batches.length,
-        currentBatch: batches.length,
+        stage: 'analyzing',
+        message: `Analyzing all ${images.length} images together...`,
         totalImages: images.length,
         processedImages: images.length
       });
     }
 
-    // Combine all batch results
-    return allResults.join('\n\n');
+    // Analyze all images together in one go
+    const analysis = await withTimeout(
+      analyzeAllImagesTogether(images),
+      300000 // 5 minute timeout for all images
+    );
+
+    // Emit final progress
+    if (progressCallback) {
+      progressCallback({
+        stage: 'finalizing',
+        message: 'Processing results...',
+        totalImages: images.length,
+        processedImages: images.length
+      });
+    }
+
+    return analysis;
   } catch (error) {
     console.error('Error analyzing multiple images:', error);
     throw new Error(`Batch analysis failed: ${error.message}`);
@@ -166,15 +110,14 @@ export const analyzeMultipleImages = async (images, progressCallback = null) => 
 };
 
 /**
- * Analyze a single batch of images
+ * Analyze all images together in one go
  */
-const analyzeBatch = async (images, totalImageCount = null) => {
+const analyzeAllImagesTogether = async (images) => {
   try {
     const model = getGeminiClient();
 
-    // Prepare prompt for batch analysis
-    const imageCountText = totalImageCount ? `${images.length} images (part of ${totalImageCount} total)` : `${images.length} images`;
-    const prompt = `You are analyzing ${imageCountText} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
+    // Prepare prompt for analyzing all images together
+    const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
 
 IMPORTANT NOTES:
 - A single question may appear partially across multiple images (split across screenshots)
@@ -183,43 +126,57 @@ IMPORTANT NOTES:
 - Questions may be cut off or split between images
 
 YOUR TASK:
-1. Analyze ALL images together as one cohesive set
+1. Analyze ALL images together as one cohesive set to get full context
 2. Identify ALL unique questions by:
    - Merging partial or split question text across images
    - Combining text fragments that belong to the same question
    - Removing duplicate questions (same question appearing in multiple images)
 3. For each final unique question:
-   - Analyze the question and find the answer from the multiple choice options
+   - Write the COMPLETE question text
+   - Find the answer from the multiple choice options
    - Identify the correct answer(s) ONLY if visible or clearly inferable
    - If the answer is NOT visible or cannot be determined, state "Answer not visible"
+   - Do NOT provide explanations for the answer
 
 OUTPUT FORMAT (EXACTLY as shown):
 total number of questions : X
 
-question 1 - answer a
-question 2 - answer a and b
-question 3 - answer d
-question 4 - answer not visible
-question 5 - answer c
+Question 1: [Complete question text here]
+Answer: a
+
+Question 2: [Complete question text here]
+Answer: a and b
+
+Question 3: [Complete question text here]
+Answer: d
+
+Question 4: [Complete question text here]
+Answer: not visible
+
+Question 5: [Complete question text here]
+Answer: c
+
 ...
 
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
-- Use lowercase: "question X - answer Y" (not "Question" or "Answer")
-- For single answer: "question 1 - answer a"
-- For multiple answers: "question 2 - answer a and b" (use "and" not commas)
-- If answer not visible: "question 4 - answer not visible"
-- NO explanations, NO descriptions, NO code blocks
+- For each question, write "Question X:" followed by the complete question text
+- Then write "Answer:" followed by the answer(s)
+- For single answer: "Answer: a"
+- For multiple answers: "Answer: a and b" (use "and" not commas)
+- If answer not visible: "Answer: not visible"
+- NO explanations for answers
+- NO descriptions of images
+- NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions that are split across images
 - Number questions sequentially starting from 1
 
 Do NOT:
 - Describe the images or screenshots
-- Provide explanations or reasoning
+- Provide explanations or reasoning for answers
 - Show code or calculations
 - Include duplicate questions
-- Use "Question" or "Answer" (use lowercase)
 - Add any other text before or after the list
 
 Return ONLY the output in the exact format specified above.`;
@@ -242,7 +199,7 @@ Return ONLY the output in the exact format specified above.`;
 
     return formattedAnalysis;
   } catch (error) {
-    console.error('Error analyzing batch:', error);
+    console.error('Error analyzing all images:', error);
     
     // Fallback: try with gemini-2.5-flash if gemini-3-flash fails
     if (error.message && (error.message.includes('gemini-3-flash') || error.message.includes('404'))) {
@@ -251,8 +208,7 @@ Return ONLY the output in the exact format specified above.`;
         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         
         // Recreate prompt for fallback
-        const imageCountText = totalImageCount ? `${images.length} images (part of ${totalImageCount} total)` : `${images.length} images`;
-        const prompt = `You are analyzing ${imageCountText} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
+        const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
 
 IMPORTANT NOTES:
 - A single question may appear partially across multiple images (split across screenshots)
@@ -261,43 +217,57 @@ IMPORTANT NOTES:
 - Questions may be cut off or split between images
 
 YOUR TASK:
-1. Analyze ALL images together as one cohesive set
+1. Analyze ALL images together as one cohesive set to get full context
 2. Identify ALL unique questions by:
    - Merging partial or split question text across images
    - Combining text fragments that belong to the same question
    - Removing duplicate questions (same question appearing in multiple images)
 3. For each final unique question:
-   - Analyze the question and find the answer from the multiple choice options
+   - Write the COMPLETE question text
+   - Find the answer from the multiple choice options
    - Identify the correct answer(s) ONLY if visible or clearly inferable
    - If the answer is NOT visible or cannot be determined, state "Answer not visible"
+   - Do NOT provide explanations for the answer
 
 OUTPUT FORMAT (EXACTLY as shown):
 total number of questions : X
 
-question 1 - answer a
-question 2 - answer a and b
-question 3 - answer d
-question 4 - answer not visible
-question 5 - answer c
+Question 1: [Complete question text here]
+Answer: a
+
+Question 2: [Complete question text here]
+Answer: a and b
+
+Question 3: [Complete question text here]
+Answer: d
+
+Question 4: [Complete question text here]
+Answer: not visible
+
+Question 5: [Complete question text here]
+Answer: c
+
 ...
 
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
-- Use lowercase: "question X - answer Y" (not "Question" or "Answer")
-- For single answer: "question 1 - answer a"
-- For multiple answers: "question 2 - answer a and b" (use "and" not commas)
-- If answer not visible: "question 4 - answer not visible"
-- NO explanations, NO descriptions, NO code blocks
+- For each question, write "Question X:" followed by the complete question text
+- Then write "Answer:" followed by the answer(s)
+- For single answer: "Answer: a"
+- For multiple answers: "Answer: a and b" (use "and" not commas)
+- If answer not visible: "Answer: not visible"
+- NO explanations for answers
+- NO descriptions of images
+- NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions that are split across images
 - Number questions sequentially starting from 1
 
 Do NOT:
 - Describe the images or screenshots
-- Provide explanations or reasoning
+- Provide explanations or reasoning for answers
 - Show code or calculations
 - Include duplicate questions
-- Use "Question" or "Answer" (use lowercase)
 - Add any other text before or after the list
 
 Return ONLY the output in the exact format specified above.`;
