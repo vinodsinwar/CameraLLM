@@ -996,15 +996,15 @@
 .capture-button {
   background: #1976d2;
   color: #ffffff;
-  padding: 1.25rem 2.5rem;
+  padding: 0.3rem 0.6rem;
   border: none;
-  border-radius: 0.75rem;
-  font-size: 1.25rem;
+  border-radius: 0.4rem;
+  font-size: 0.6rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 250px;
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  min-width: 50px;
+  box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
 }
 
 .capture-button:hover:not(:disabled) {
