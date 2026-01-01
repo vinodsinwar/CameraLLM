@@ -249,16 +249,16 @@ function App() {
       window.addEventListener('batchAnalyzeComplete', handleComplete);
       
       // Send all images to server for batch analysis
+      // Use API directly for large payloads (more reliable than socket)
+      if (payloadSize > 10 * 1024 * 1024) { // > 10MB, use API
+        console.log('[BATCH_ANALYZE] Large payload, using API directly');
+        if (timeoutId) clearTimeout(timeoutId);
+        window.removeEventListener('batchAnalyzeComplete', handleComplete);
+        return tryApiFallback(images);
+      }
+      
       if (socket && socket.connected) {
         console.log('[BATCH_ANALYZE] Sending via socket');
-        
-        // Check if payload is too large (Socket.io default limit is 1MB)
-        if (payloadSize > 1024 * 1024) {
-          console.warn('[BATCH_ANALYZE] Payload too large for socket, using API fallback');
-          if (timeoutId) clearTimeout(timeoutId);
-          window.removeEventListener('batchAnalyzeComplete', handleComplete);
-          return tryApiFallback(images);
-        }
         
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
           images,
@@ -268,33 +268,10 @@ function App() {
         // Don't set isCapturing to false here - wait for response or timeout
       } else {
         // Fallback to API
-        console.log('[BATCH_ANALYZE] Sending via API fallback');
-        const response = await fetch('/api/batch-analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ images })
-        });
-        const data = await response.json();
-        if (data.success && data.analysis) {
-          // Manually add message since we're using API (no socket)
-          console.log('[BATCH_ANALYZE] Analysis complete via API');
-          // We'll need to trigger a custom event or use a callback
-          // For now, let's emit a fake socket event if socket exists
-          if (socket) {
-            socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, {
-              analysis: data.analysis,
-              imageCount: images.length,
-              timestamp: Date.now()
-            });
-          }
-          setIsCapturing(false);
-          setIsCapturingMultiple(false);
-          setCaptureProgress(null);
-        } else {
-          throw new Error(data.error || 'Analysis failed');
-        }
+        console.log('[BATCH_ANALYZE] Socket not available, using API fallback');
+        if (timeoutId) clearTimeout(timeoutId);
+        window.removeEventListener('batchAnalyzeComplete', handleComplete);
+        return tryApiFallback(images);
       }
     } catch (error) {
       console.error('[BATCH_ANALYZE] Error:', error);
