@@ -324,7 +324,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
     <div className="chat-interface">
       {/* No floating buttons needed - camera activation is in header */}
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={chatMessagesRef}>
         {showWelcomeMessage && (
           <div className="welcome-message">
             <div className="welcome-content">
