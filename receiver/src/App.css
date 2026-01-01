@@ -978,14 +978,15 @@
 .capture-button {
   background: #1976d2;
   color: #ffffff;
-  padding: 1rem 2rem;
+  padding: 1.25rem 2.5rem;
   border: none;
   border-radius: 0.75rem;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 200px;
+  min-width: 250px;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
 }
 
 .capture-button:hover:not(:disabled) {
@@ -1020,4 +1021,57 @@
   background: #ccc;
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+  .chat-input-form {
+    padding: 1.25rem 1rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom) + 20px);
+    gap: 0.5rem;
+  }
+
+  .capture-button {
+    padding: 1.5rem 2rem;
+    font-size: 1.125rem;
+    min-width: 100%;
+    width: 100%;
+    box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+  }
+
+  .capture-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .clear-button {
+    width: 100%;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+
+  .chat-messages {
+    padding-bottom: 1rem;
+  }
+
+  .welcome-message {
+    padding: 1.5rem 1rem;
+  }
+
+  .welcome-content h3 {
+    font-size: 1.5rem;
+  }
+
+  .welcome-content p {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+}
+
+/* Ensure button is always visible on mobile */
+@supports (padding: max(0px)) {
+  .chat-input-form {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom) + 1.5rem);
+  }
 }
