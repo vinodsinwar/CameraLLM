@@ -11,29 +11,10 @@ function App() {
   const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
   const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
-  const [hasMessages, setHasMessages] = useState(false);
   const countdownIntervalRef = useRef(null);
   const captureIntervalRef = useRef(null);
   const multipleCaptureImagesRef = useRef([]);
   const { socket, connected } = useWebSocket();
-
-  // Listen for messages updates
-  useEffect(() => {
-    const handleMessagesUpdate = (event) => {
-      setHasMessages(event.detail.count > 0);
-    };
-    const handleClearChat = () => {
-      setHasMessages(false);
-    };
-
-    window.addEventListener('messagesUpdated', handleMessagesUpdate);
-    window.addEventListener('clearChat', handleClearChat);
-
-    return () => {
-      window.removeEventListener('messagesUpdated', handleMessagesUpdate);
-      window.removeEventListener('clearChat', handleClearChat);
-    };
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -553,8 +534,6 @@ function App() {
         isCapturingMultiple={isCapturingMultiple}
         countdown={countdown}
         captureProgress={captureProgress}
-        hasMessages={hasMessages}
-        onClearChat={() => setHasMessages(false)}
       />
     </div>
   );
