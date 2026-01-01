@@ -289,6 +289,16 @@ function App() {
       console.log('[BATCH_ANALYZE] Trying API fallback...');
       setIsCapturing(true);
       
+      // Show initial progress (API doesn't support real-time updates)
+      setAnalysisProgress({
+        stage: 'analyzing',
+        message: `Analyzing ${images.length} images via API...`,
+        totalBatches: Math.ceil(images.length / 10),
+        currentBatch: 0,
+        totalImages: images.length,
+        processedImages: 0
+      });
+      
       const response = await fetch('/api/batch-analyze', {
         method: 'POST',
         headers: {
