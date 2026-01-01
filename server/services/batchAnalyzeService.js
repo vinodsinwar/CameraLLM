@@ -181,8 +181,9 @@ CRITICAL RULES:
 - For single answer: "Answer: a"
 - For multiple answers: "Answer: a and b" (use "and" not commas)
 - You MUST include ALL options for each question - search all images carefully
-- You MUST find answers - analyze questions and options to determine correct answer
-- Only use "Answer: not visible" if question or ALL options are completely unreadable
+- You MUST find answers using reasoning - analyze questions and options to determine correct answer
+- Use your knowledge and reasoning to solve questions, not just extract visible answers
+- Only use "Answer: not visible" if question or ALL options are completely unreadable or the question cannot be understood
 - NO explanations for answers
 - NO descriptions of images
 - NO code blocks
@@ -292,8 +293,9 @@ CRITICAL RULES:
 - For single answer: "Answer: a"
 - For multiple answers: "Answer: a and b" (use "and" not commas)
 - You MUST include ALL options for each question - search all images carefully
-- You MUST find answers - analyze questions and options to determine correct answer
-- Only use "Answer: not visible" if question or ALL options are completely unreadable
+- You MUST find answers using reasoning - analyze questions and options to determine correct answer
+- Use your knowledge and reasoning to solve questions, not just extract visible answers
+- Only use "Answer: not visible" if question or ALL options are completely unreadable or the question cannot be understood
 - NO explanations for answers
 - NO descriptions of images
 - NO code blocks
