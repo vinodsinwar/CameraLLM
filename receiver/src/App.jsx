@@ -6,12 +6,14 @@ import './App.css';
 
 function App() {
   const [countdown, setCountdown] = useState(null);
+  const [waitTimer, setWaitTimer] = useState(null); // 2-minute wait timer for multiple capture
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
   const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
   const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
+  const waitTimerIntervalRef = useRef(null);
   const captureIntervalRef = useRef(null);
   const multipleCaptureImagesRef = useRef([]);
   const { socket, connected } = useWebSocket();
@@ -21,6 +23,9 @@ function App() {
     return () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
+      }
+      if (waitTimerIntervalRef.current) {
+        clearInterval(waitTimerIntervalRef.current);
       }
       if (captureIntervalRef.current) {
         clearInterval(captureIntervalRef.current);
@@ -52,24 +57,39 @@ function App() {
   };
 
   const handleCaptureMultiple = async () => {
-    if (isCapturing || isCapturingMultiple || countdown !== null) return;
+    if (isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null) return;
 
     setIsCapturingMultiple(true);
     multipleCaptureImagesRef.current = [];
-        setCaptureProgress({ elapsed: 0, total: 60, captured: 0 });
+    setCaptureProgress({ elapsed: 0, total: 60, captured: 0 });
 
-    let remaining = 5;
-    setCountdown(remaining);
+    // Start 2-minute wait timer first
+    let waitRemaining = 120; // 2 minutes = 120 seconds
+    setWaitTimer(waitRemaining);
 
-    // Start countdown
-    countdownIntervalRef.current = setInterval(() => {
-      remaining -= 1;
-      setCountdown(remaining);
+    waitTimerIntervalRef.current = setInterval(() => {
+      waitRemaining -= 1;
+      setWaitTimer(waitRemaining);
 
-      if (remaining <= 0) {
-        clearInterval(countdownIntervalRef.current);
-        setCountdown(null);
-        startMultipleCapture();
+      if (waitRemaining <= 0) {
+        clearInterval(waitTimerIntervalRef.current);
+        setWaitTimer(null);
+        
+        // After 2-minute wait, start the 5-second countdown
+        let remaining = 5;
+        setCountdown(remaining);
+
+        // Start countdown
+        countdownIntervalRef.current = setInterval(() => {
+          remaining -= 1;
+          setCountdown(remaining);
+
+          if (remaining <= 0) {
+            clearInterval(countdownIntervalRef.current);
+            setCountdown(null);
+            startMultipleCapture();
+          }
+        }, 1000);
       }
     }, 1000);
   };
@@ -464,8 +484,24 @@ function App() {
         </div>
       </header>
 
+      {/* 2-minute wait timer overlay for multiple capture */}
+      {waitTimer !== null && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">{waitTimer}</div>
+            <p className="countdown-text">
+              Waiting {Math.floor(waitTimer / 60)}:{(waitTimer % 60).toString().padStart(2, '0')}
+              <br />
+              <span style={{ fontSize: '0.6em', opacity: 0.8 }}>
+                Capture will start after wait timer...
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Countdown overlay */}
-      {countdown !== null && (
+      {countdown !== null && waitTimer === null && (
         <div className="countdown-overlay">
           <div className="countdown-content">
             <div className="countdown-number">{countdown}</div>
@@ -533,6 +569,7 @@ function App() {
         isCapturing={isCapturing}
         isCapturingMultiple={isCapturingMultiple}
         countdown={countdown}
+        waitTimer={waitTimer}
         captureProgress={captureProgress}
       />
     </div>
