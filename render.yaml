@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: camera-analyzer-backend
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+  - type: web
+    name: camera-analyzer-frontend
+    env: static
+    buildCommand: cd receiver && npm install && npm run build
+    staticPublishPath: receiver/dist
+
