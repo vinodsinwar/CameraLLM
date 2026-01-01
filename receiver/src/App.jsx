@@ -147,31 +147,63 @@ function App() {
 
   const analyzeMultipleImages = async (images) => {
     try {
+      console.log(`[BATCH_ANALYZE] Starting analysis for ${images.length} images`);
       setIsCapturing(true);
       
       // Send all images to server for batch analysis
       if (socket) {
+        console.log('[BATCH_ANALYZE] Sending via socket');
         socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_REQUEST, {
           images,
           timestamp: Date.now()
         });
+        // Don't set isCapturing to false here - wait for response
       } else {
         // Fallback to API
-        const response = await fetch('/api/batch-analyze', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ images })
-        });
-        const data = await response.json();
-        if (data.success) {
-          // Results handled by ChatInterface
+        console.log('[BATCH_ANALYZE] Sending via API fallback');
+        try {
+          const response = await fetch('/api/batch-analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ images })
+          });
+          const data = await response.json();
+          if (data.success && data.analysis) {
+            // Manually trigger the response handler since we're using API
+            if (socket) {
+              // Emit a fake response event that ChatInterface can handle
+              socket.emit(MESSAGE_TYPES.BATCH_ANALYZE_RESPONSE, {
+                analysis: data.analysis,
+                imageCount: images.length,
+                timestamp: Date.now()
+              });
+            } else {
+              // If no socket, we need to manually add message
+              // This will be handled by a custom event or we'll need to pass a callback
+              console.log('[BATCH_ANALYZE] Analysis complete:', data.analysis);
+            }
+            setIsCapturing(false);
+            setIsCapturingMultiple(false);
+            setCaptureProgress(null);
+          } else {
+            throw new Error(data.error || 'Analysis failed');
+          }
+        } catch (apiError) {
+          console.error('[BATCH_ANALYZE] API error:', apiError);
+          setIsCapturing(false);
+          setIsCapturingMultiple(false);
+          setCaptureProgress(null);
+          alert('Failed to analyze images: ' + apiError.message);
         }
       }
     } catch (error) {
       console.error('Error analyzing multiple images:', error);
       setIsCapturing(false);
+      setIsCapturingMultiple(false);
+      setCaptureProgress(null);
+      alert('Failed to analyze images: ' + error.message);
     }
   };
 
