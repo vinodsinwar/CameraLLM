@@ -139,10 +139,13 @@ YOUR TASK:
    - Write ALL available options (A, B, C, D, etc.) with their text
    - Find the answer by analyzing the question and options carefully
    - You MUST find the answer - look carefully across all images
-   - Use reasoning, logic, and knowledge to determine the answer if not explicitly marked
-   - Only use "not visible" if the question or ALL options are completely unreadable
-   - Do NOT give up easily - analyze thoroughly to find answers
-   - Do NOT provide explanations for the answer
+   - CRITICAL: Use your reasoning, logic, and knowledge to determine the correct answer
+   - Apply your understanding of the subject matter (math, science, programming, etc.) to solve each question
+   - Think through the problem step-by-step internally, then select the correct answer(s)
+   - If the answer is not explicitly marked/visible, use your knowledge to solve it
+   - Only use "not visible" if the question or ALL options are completely unreadable or the question cannot be understood
+   - Do NOT give up easily - analyze thoroughly using reasoning to find answers
+   - Do NOT provide explanations in the output (just the answer), but DO use reasoning internally to find it
 
 OUTPUT FORMAT (EXACTLY as shown):
 total number of questions : X
@@ -251,10 +254,13 @@ YOUR TASK:
    - Write ALL available options (A, B, C, D, etc.) with their text
    - Find the answer by analyzing the question and options carefully
    - You MUST find the answer - look carefully across all images
-   - Use reasoning, logic, and knowledge to determine the answer if not explicitly marked
-   - Only use "not visible" if the question or ALL options are completely unreadable
-   - Do NOT give up easily - analyze thoroughly to find answers
-   - Do NOT provide explanations for the answer
+   - CRITICAL: Use your reasoning, logic, and knowledge to determine the correct answer
+   - Apply your understanding of the subject matter (math, science, programming, etc.) to solve each question
+   - Think through the problem step-by-step internally, then select the correct answer(s)
+   - If the answer is not explicitly marked/visible, use your knowledge to solve it
+   - Only use "not visible" if the question or ALL options are completely unreadable or the question cannot be understood
+   - Do NOT give up easily - analyze thoroughly using reasoning to find answers
+   - Do NOT provide explanations in the output (just the answer), but DO use reasoning internally to find it
 
 OUTPUT FORMAT (EXACTLY as shown):
 total number of questions : X
