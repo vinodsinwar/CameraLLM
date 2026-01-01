@@ -294,7 +294,7 @@ Return ONLY the output in the exact format specified above.`;
  * Format and deduplicate the batch analysis response
  */
 const formatBatchAnalysis = (analysis) => {
-  if (!analysis) return 'total number of questions : 0';
+  if (!analysis) return 'total number of questions : 0\n\nNo questions found.';
 
   const lines = analysis.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   
@@ -305,60 +305,69 @@ const formatBatchAnalysis = (analysis) => {
     totalCount = parseInt(totalMatch[1], 10);
   }
 
-  // Extract question lines (case-insensitive matching)
-  const questionLines = lines.filter(line => {
-    // Match: "question X - answer Y" or "question X - answer not visible"
-    return /^question\s+\d+\s*-\s*answer\s+[a-z0-9\s]+(?:and\s+[a-z0-9\s]+)?(?:not\s+visible)?$/i.test(line);
-  });
+  // Extract questions in the new format: "Question X: ..." followed by "Answer: ..."
+  const questions = [];
+  let currentQuestion = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Match "Question X: ..." pattern
+    const questionMatch = line.match(/^Question\s+(\d+):\s*(.+)$/i);
+    if (questionMatch) {
+      // Save previous question if exists
+      if (currentQuestion) {
+        questions.push(currentQuestion);
+      }
+      // Start new question
+      currentQuestion = {
+        number: parseInt(questionMatch[1], 10),
+        text: questionMatch[2].trim(),
+        answer: null
+      };
+    }
+    // Match "Answer: ..." pattern
+    else if (currentQuestion && /^Answer:\s*(.+)$/i.test(line)) {
+      const answerMatch = line.match(/^Answer:\s*(.+)$/i);
+      if (answerMatch) {
+        currentQuestion.answer = answerMatch[1].trim().toLowerCase();
+      }
+    }
+  }
+  
+  // Add last question if exists
+  if (currentQuestion) {
+    questions.push(currentQuestion);
+  }
 
-  if (questionLines.length === 0) {
-    // If no properly formatted lines, return as-is but try to extract
+  // If no questions found in new format, return as-is
+  if (questions.length === 0) {
     return analysis;
   }
 
-  // Parse and deduplicate questions
-  const questionMap = new Map(); // Use Map to preserve order and deduplicate
-
-  for (const line of questionLines) {
-    // Match: "question X - answer Y" or "question X - answer not visible"
-    const match = line.match(/^question\s+(\d+)\s*-\s*answer\s+(.+)$/i);
-    if (match) {
-      const questionNum = parseInt(match[1], 10);
-      const answer = match[2].trim().toLowerCase();
-      
-      // Use question number as key to detect duplicates (same question number = duplicate)
-      // But we want to keep unique questions, so we'll use the answer text as part of the key
-      // Actually, we should deduplicate based on question content, but since we only have numbers,
-      // we'll assume the LLM already merged duplicates. We just need to ensure sequential numbering.
-      
-      // Store with lowercase format
-      questionMap.set(questionNum, `question ${questionNum} - answer ${answer}`);
+  // Remove duplicates based on question text (case-insensitive)
+  const uniqueQuestions = [];
+  const seenQuestions = new Set();
+  
+  for (const q of questions) {
+    const questionKey = q.text.toLowerCase().trim();
+    if (!seenQuestions.has(questionKey)) {
+      seenQuestions.add(questionKey);
+      uniqueQuestions.push(q);
     }
   }
 
-  // Convert to array and renumber sequentially
-  const sortedQuestions = Array.from(questionMap.values())
-    .sort((a, b) => {
-      const numA = parseInt(a.match(/question\s+(\d+)/i)?.[1] || '0', 10);
-      const numB = parseInt(b.match(/question\s+(\d+)/i)?.[1] || '0', 10);
-      return numA - numB;
-    })
-    .map((line, index) => {
-      const match = line.match(/question\s+\d+\s*-\s*answer\s+(.+)$/i);
-      if (match) {
-        return `question ${index + 1} - answer ${match[1]}`;
-      }
-      return line;
-    });
-
-  // Update total count to match actual questions found
-  const finalCount = sortedQuestions.length;
+  // Sort by question number and renumber sequentially
+  uniqueQuestions.sort((a, b) => a.number - b.number);
   
-  // Build final output
-  const output = [
-    `total number of questions : ${finalCount}`,
-    ...sortedQuestions
-  ];
+  // Build output
+  const output = [`total number of questions : ${uniqueQuestions.length}`, ''];
+  
+  uniqueQuestions.forEach((q, index) => {
+    output.push(`Question ${index + 1}: ${q.text}`);
+    output.push(`Answer: ${q.answer || 'not visible'}`);
+    output.push(''); // Empty line between questions
+  });
 
   return output.join('\n');
 };
