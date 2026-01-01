@@ -478,52 +478,8 @@ function App() {
       <header className="app-header">
         <h1>Camera Analyzer</h1>
         <div className="header-actions-top">
-          <div className="top-right-buttons">
-            <button
-              type="button"
-              className="top-button capture-single"
-              onClick={handleCaptureSingle}
-              disabled={isCapturing || isCapturingMultiple || countdown !== null}
-              title="Capture Single Image"
-            >
-              {countdown !== null && !isCapturingMultiple
-                ? `${countdown}`
-                : isCapturing && !isCapturingMultiple
-                ? '...'
-                : '1'}
-            </button>
-            <button
-              type="button"
-              className="top-button capture-multiple"
-              onClick={handleCaptureMultiple}
-              disabled={isCapturing || isCapturingMultiple || countdown !== null}
-              title="Capture Multiple Images"
-            >
-              {isCapturingMultiple
-                ? `${captureProgress?.captured || 0}`
-                : countdown !== null && isCapturingMultiple
-                ? `${countdown}`
-                : '2'}
-            </button>
-            {hasMessages && (
-              <button
-                type="button"
-                className="top-button clear-button"
-                onClick={() => {
-                  setHasMessages(false);
-                  window.dispatchEvent(new CustomEvent('clearChat'));
-                }}
-                title="Clear Chat"
-                disabled={isCapturing || isCapturingMultiple || countdown !== null}
-              >
-                X
-              </button>
-            )}
-          </div>
-          <div className="status-info">
-            <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`}></span>
-            <span className="status-text">{connected ? 'Connected' : 'Disconnected'}</span>
-          </div>
+          <span className={`status-dot ${connected ? 'connected' : 'disconnected'}`}></span>
+          <span className="status-text">{connected ? 'Connected' : 'Disconnected'}</span>
         </div>
       </header>
 
@@ -597,6 +553,7 @@ function App() {
         isCapturingMultiple={isCapturingMultiple}
         countdown={countdown}
         captureProgress={captureProgress}
+        hasMessages={hasMessages}
         onClearChat={() => setHasMessages(false)}
       />
     </div>

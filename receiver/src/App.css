@@ -1047,6 +1047,15 @@
   flex-wrap: wrap;
 }
 
+.chat-input-form {
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .capture-button.capture-single {
   background: #1976d2;
 }
@@ -1088,13 +1097,14 @@
 .clear-button {
   background: #f44336;
   color: #ffffff;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.5rem;
   border: none;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.2s ease;
+  min-width: 60px;
 }
 
 .clear-button:hover:not(:disabled) {

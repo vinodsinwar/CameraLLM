@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import MessageItem from './MessageItem';
 import { MESSAGE_TYPES } from '@shared/constants.js';
 
-const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, captureProgress, onClearChat }) => {
+const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, captureProgress, hasMessages, onClearChat }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
@@ -331,6 +331,48 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
 
         <div ref={messagesEndRef} />
       </div>
+
+      <form className="chat-input-form" onSubmit={(e) => e.preventDefault()}>
+        <div className="capture-actions">
+          <button
+            type="button"
+            className="capture-button capture-single"
+            onClick={onCaptureSingle}
+            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
+            title="Capture Single Image"
+          >
+            {countdown !== null && !isCapturingMultiple
+              ? `${countdown}`
+              : isCapturing && !isCapturingMultiple
+              ? '...'
+              : '1'}
+          </button>
+          <button
+            type="button"
+            className="capture-button capture-multiple"
+            onClick={onCaptureMultiple}
+            disabled={isCapturing || isCapturingMultiple || countdown !== null || isLoading}
+            title="Capture Multiple Images"
+          >
+            {isCapturingMultiple
+              ? `${captureProgress?.captured || 0}`
+              : countdown !== null && isCapturingMultiple
+              ? `${countdown}`
+              : '2'}
+          </button>
+          {hasMessages && (
+            <button
+              type="button"
+              className="clear-button"
+              onClick={handleClearChat}
+              title="Clear Chat"
+              disabled={isCapturing || isCapturingMultiple || countdown !== null}
+            >
+              X
+            </button>
+          )}
+        </div>
+      </form>
     </div>
   );
 };
