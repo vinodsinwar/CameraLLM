@@ -996,11 +996,14 @@
 }
 
 .capture-button.capture-video {
-  background: #ff9800;
+  background: #ff9800 !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .capture-button.capture-video:hover:not(:disabled) {
-  background: #f57c00;
+  background: #f57c00 !important;
 }
 
 .capture-button {

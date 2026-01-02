@@ -2,9 +2,19 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import MessageItem from './MessageItem';
 import { MESSAGE_TYPES } from '@shared/constants.js';
 
-const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing, isCapturingMultiple, countdown, waitTimer, captureProgress }) => {
+const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVideo, isCapturing, isCapturingMultiple, isRecordingVideo, countdown, waitTimer, captureProgress, videoProgress }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Debug: Log props to verify they're being passed
+  useEffect(() => {
+    console.log('[ChatInterface] Video button props:', {
+      hasOnCaptureVideo: !!onCaptureVideo,
+      isRecordingVideo: isRecordingVideo,
+      videoProgress: videoProgress,
+      type: typeof onCaptureVideo
+    });
+  }, [onCaptureVideo, isRecordingVideo, videoProgress]);
   const messagesEndRef = useRef(null);
   const imageContextRef = useRef(null);
   const seenImageIdsRef = useRef(new Set()); // Track all seen image IDs to prevent duplicates
@@ -371,7 +381,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
               type="button"
               className="capture-button capture-multiple"
               onClick={onCaptureMultiple}
-              disabled={isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null || isLoading}
+              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null || isLoading}
               title="Capture Multiple Images"
             >
               {isCapturingMultiple
@@ -382,13 +392,26 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, isCapturing
                 ? `${countdown}`
                 : '2'}
             </button>
+            <button
+              type="button"
+              className="capture-button capture-video"
+              onClick={onCaptureVideo || (() => console.warn('onCaptureVideo not provided'))}
+              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null || isLoading || !onCaptureVideo}
+              title="Capture Video (3 minutes)"
+            >
+              {isRecordingVideo
+                ? videoProgress !== null
+                  ? `${Math.floor(videoProgress / 60)}:${String(videoProgress % 60).padStart(2, '0')}`
+                  : '...'
+                : '3'}
+            </button>
           {messages.length > 0 && (
             <button
               type="button"
               className="clear-button"
               onClick={handleClearChat}
               title="Clear Chat"
-              disabled={isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null}
+              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null}
             >
               X
             </button>
