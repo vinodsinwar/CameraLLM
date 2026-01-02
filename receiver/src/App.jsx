@@ -6,10 +6,10 @@ import './App.css';
 
 function App() {
   const [countdown, setCountdown] = useState(null);
-  const [waitTimer, setWaitTimer] = useState(null); // 2-minute wait timer for multiple capture
+  const [waitTimer, setWaitTimer] = useState(null); // 15-minute wait timer for multiple capture
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
-  const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
+  const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 180, captured: 0 }
   const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
@@ -61,10 +61,10 @@ function App() {
 
     setIsCapturingMultiple(true);
     multipleCaptureImagesRef.current = [];
-    setCaptureProgress({ elapsed: 0, total: 60, captured: 0 });
+    setCaptureProgress({ elapsed: 0, total: 180, captured: 0 });
 
-    // Start 2-minute wait timer first
-    let waitRemaining = 120; // 2 minutes = 120 seconds
+    // Start 15-minute wait timer first
+    let waitRemaining = 900; // 15 minutes = 900 seconds
     setWaitTimer(waitRemaining);
 
     waitTimerIntervalRef.current = setInterval(() => {
@@ -75,7 +75,7 @@ function App() {
         clearInterval(waitTimerIntervalRef.current);
         setWaitTimer(null);
         
-        // After 2-minute wait, start the 5-second countdown
+        // After 15-minute wait, start the 5-second countdown
         let remaining = 5;
         setCountdown(remaining);
 
@@ -161,7 +161,7 @@ function App() {
         // Optimize image before storing
         const optimizedImage = await optimizeImage(rawImageData);
         multipleCaptureImagesRef.current.push(optimizedImage);
-        setCaptureProgress({ elapsed: 0, total: 60, captured: 1 });
+        setCaptureProgress({ elapsed: 0, total: 180, captured: 1 });
         console.log(`[CAPTURE] Image 1 captured and optimized. Size: ${(optimizedImage.length / 1024).toFixed(2)} KB`);
       } catch (err) {
         console.error('Error capturing first image:', err);
@@ -170,7 +170,7 @@ function App() {
       let elapsed = 2; // Start at 2 seconds since first capture was at 0
       let captured = 1;
 
-      // Capture every 2 seconds for 1 minute (total 30 captures: 1 immediate + 29 more)
+      // Capture every 2 seconds for 3 minutes (total 90 captures: 1 immediate + 89 more)
       captureIntervalRef.current = setInterval(async () => {
         try {
           const canvas = document.createElement('canvas');
@@ -187,11 +187,11 @@ function App() {
           captured++;
           elapsed += 2;
 
-          setCaptureProgress({ elapsed, total: 60, captured });
+          setCaptureProgress({ elapsed, total: 180, captured });
           console.log(`[CAPTURE] Image ${captured} captured and optimized. Size: ${(optimizedImage.length / 1024).toFixed(2)} KB`);
 
-          // After 1 minute (60 seconds), stop capturing and analyze
-          if (elapsed >= 60) {
+          // After 3 minutes (180 seconds), stop capturing and analyze
+          if (elapsed >= 180) {
             clearInterval(captureIntervalRef.current);
             
             // Stop camera stream
