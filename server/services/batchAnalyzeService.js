@@ -422,8 +422,8 @@ const formatBatchAnalysis = (analysis) => {
     }
   }
 
-  // Sort by question number and renumber sequentially
-  uniqueQuestions.sort((a, b) => a.number - b.number);
+  // Sort by original question number
+  uniqueQuestions.sort((a, b) => a.originalNumber - b.originalNumber);
   
   // Build summary: "Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ..."
   const summaryParts = uniqueQuestions.map((q, index) => {
