@@ -1086,10 +1086,11 @@
 
   .clear-button {
     width: auto;
-    padding: 0.3rem 0.5rem;
-    font-size: 0.6rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.65rem;
     font-weight: 600;
     min-width: 40px;
+    flex-shrink: 0;
   }
 
   .chat-messages {
