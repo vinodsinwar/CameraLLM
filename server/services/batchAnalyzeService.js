@@ -425,10 +425,30 @@ const formatBatchAnalysis = (analysis) => {
   // Sort by original question number
   uniqueQuestions.sort((a, b) => a.originalNumber - b.originalNumber);
   
-  // Build summary: "Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ..."
-  const summaryParts = uniqueQuestions.map((q, index) => {
+  // Detect if numbers are sequential (1, 2, 3...) - if so, they're likely generated, not from images
+  // If numbers are non-sequential (e.g., 5, 7, 10), they're likely original from images
+  const numbers = uniqueQuestions.map(q => q.originalNumber);
+  const isSequential = numbers.length > 0 && 
+    numbers.every((num, idx) => idx === 0 || num === numbers[idx - 1] + 1) &&
+    numbers[0] === 1; // Must start from 1 to be considered sequential
+  
+  // If sequential starting from 1, mark as generated (no original numbers)
+  if (isSequential && numbers[0] === 1) {
+    uniqueQuestions.forEach(q => {
+      q.hasOriginalNumber = false;
+    });
+  }
+  
+  // Build summary with original numbers or R-prefixed generated numbers
+  const summaryParts = uniqueQuestions.map((q) => {
     const answer = q.answer || 'not visible';
-    return `${index + 1}(${answer})`;
+    if (q.hasOriginalNumber) {
+      return `${q.originalNumber}(${answer})`;
+    } else {
+      // Find index for R-prefixed number
+      const index = uniqueQuestions.indexOf(q);
+      return `R${index + 1}(${answer})`;
+    }
   });
   const summary = `Summary: ${summaryParts.join(', ')}`;
   
@@ -441,7 +461,12 @@ const formatBatchAnalysis = (analysis) => {
   ];
   
   uniqueQuestions.forEach((q, index) => {
-    output.push(`Question ${index + 1}: ${q.text}`);
+    // Use original number if available, otherwise use R-prefixed sequential number
+    const questionLabel = q.hasOriginalNumber 
+      ? `Question ${q.originalNumber}`
+      : `Question R${index + 1}`;
+    
+    output.push(`${questionLabel}: ${q.text}`);
     if (q.options && q.options.length > 0) {
       output.push('Options:');
       q.options.forEach(opt => {
