@@ -9,12 +9,17 @@ function App() {
   const [waitTimer, setWaitTimer] = useState(null); // 2-minute wait timer for multiple capture
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 180, captured: 0 } - 3 minutes
+  const [videoProgress, setVideoProgress] = useState(null); // Elapsed seconds for video recording
   const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
   const waitTimerIntervalRef = useRef(null);
   const captureIntervalRef = useRef(null);
+  const videoTimerRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
   const multipleCaptureImagesRef = useRef([]);
   const { socket, connected } = useWebSocket();
 
@@ -30,6 +35,12 @@ function App() {
       if (captureIntervalRef.current) {
         clearInterval(captureIntervalRef.current);
       }
+      if (videoTimerRef.current) {
+        clearInterval(videoTimerRef.current);
+      }
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
@@ -37,7 +48,7 @@ function App() {
   }, [cameraStream]);
 
   const handleCaptureSingle = async () => {
-    if (isCapturing || isCapturingMultiple || countdown !== null) return;
+    if (isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null) return;
 
     setIsCapturing(true);
     let remaining = 5;
@@ -57,7 +68,7 @@ function App() {
   };
 
   const handleCaptureMultiple = async () => {
-    if (isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null) return;
+    if (isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null) return;
 
     setIsCapturingMultiple(true);
     multipleCaptureImagesRef.current = [];
@@ -92,6 +103,219 @@ function App() {
         }, 1000);
       }
     }, 1000);
+  };
+
+  const handleCaptureVideo = async () => {
+    if (isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null) return;
+
+    setIsRecordingVideo(true);
+    recordedChunksRef.current = [];
+    setVideoProgress(0);
+
+    try {
+      // Get camera stream with optimized constraints for video recording
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280, max: 1280 },
+          height: { ideal: 720, max: 720 },
+          frameRate: { ideal: 15, max: 20 } // Lower frame rate for smaller file size
+        } 
+      });
+      
+      setCameraStream(stream);
+
+      // Start 5-second countdown before recording
+      let remaining = 5;
+      setCountdown(remaining);
+
+      countdownIntervalRef.current = setInterval(() => {
+        remaining -= 1;
+        setCountdown(remaining);
+
+        if (remaining <= 0) {
+          clearInterval(countdownIntervalRef.current);
+          setCountdown(null);
+          startVideoRecording(stream);
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error starting video capture:', error);
+      setIsRecordingVideo(false);
+      setVideoProgress(null);
+      alert('Failed to start video recording: ' + error.message);
+    }
+  };
+
+  const startVideoRecording = (stream) => {
+    try {
+      // Determine best codec and mime type (vp9 is more efficient, fallback to vp8)
+      let mimeType = 'video/webm;codecs=vp9';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'video/webm;codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          alert('Video recording is not supported in this browser. Please use Chrome or Firefox.');
+          setIsRecordingVideo(false);
+          setVideoProgress(null);
+          stream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+          return;
+        }
+      }
+
+      // Optimized settings for balance between quality and file size
+      // 1.2 Mbps bitrate: ~27 MB for 3 minutes (good quality, reasonable size)
+      // Resolution: 1280x720 (already constrained in getUserMedia)
+      // Frame rate: 15 fps (sufficient for text capture, reduces file size)
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: mimeType,
+        videoBitsPerSecond: 1200000 // 1.2 Mbps - optimized for text capture
+      });
+
+      mediaRecorderRef.current = mediaRecorder;
+      recordedChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        console.log('[VIDEO] Recording stopped. Extracting frames...');
+        await extractFramesFromVideo();
+      };
+
+      // Start recording
+      mediaRecorder.start(1000); // Collect data every second
+      console.log('[VIDEO] Started recording video');
+
+      // Record for 3 minutes (180 seconds)
+      let elapsed = 0;
+      setVideoProgress(0);
+
+      videoTimerRef.current = setInterval(() => {
+        elapsed += 1;
+        setVideoProgress(elapsed);
+
+        if (elapsed >= 180) {
+          clearInterval(videoTimerRef.current);
+          if (mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+          }
+          stream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+          console.log('[VIDEO] Recording completed after 3 minutes');
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Error in video recording:', error);
+      setIsRecordingVideo(false);
+      setVideoProgress(null);
+      alert('Failed to record video: ' + error.message);
+    }
+  };
+
+  const extractFramesFromVideo = async () => {
+    try {
+      console.log('[VIDEO] Starting frame extraction...');
+      setIsCapturing(true);
+      setVideoProgress(null);
+
+      // Create blob from recorded chunks
+      const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const videoUrl = URL.createObjectURL(videoBlob);
+
+      // Create video element to extract frames
+      const video = document.createElement('video');
+      video.src = videoUrl;
+      video.muted = true;
+      video.playsInline = true;
+
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = () => {
+          video.currentTime = 0;
+          resolve();
+        };
+        video.onerror = reject;
+      });
+
+      // Wait for video to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const extractedFrames = [];
+      const frameInterval = 2; // Extract frame every 2 seconds
+      const totalDuration = video.duration;
+      let currentTime = 0;
+      let frameCount = 0;
+
+      // Log video info for debugging
+      const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+      const videoSizeMB = (videoBlob.size / 1024 / 1024).toFixed(2);
+      console.log(`[VIDEO] Video duration: ${totalDuration.toFixed(2)}s, size: ${videoSizeMB} MB, extracting frames every ${frameInterval}s`);
+
+      // Extract frames at intervals
+      const extractFrameAtTime = async (time) => {
+        return new Promise((resolve) => {
+          const onSeeked = async () => {
+            video.removeEventListener('seeked', onSeeked);
+            // Wait a bit for frame to render
+            await new Promise(r => setTimeout(r, 100));
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(video, 0, 0);
+
+              // Use lower quality for frames since they're from optimized video
+              const frameData = canvas.toDataURL('image/jpeg', 0.75);
+              
+              // Optimize frame before storing (already constrained to 1280x720 from video)
+              const optimizedFrame = await optimizeImage(frameData, 1280, 720, 0.7);
+              extractedFrames.push(optimizedFrame);
+              frameCount++;
+
+              console.log(`[VIDEO] Extracted frame ${frameCount} at ${time.toFixed(2)}s. Size: ${(optimizedFrame.length / 1024).toFixed(2)} KB`);
+              resolve();
+            } catch (err) {
+              console.error(`[VIDEO] Error extracting frame at ${time}s:`, err);
+              resolve(); // Continue even if one frame fails
+            }
+          };
+          
+          video.addEventListener('seeked', onSeeked);
+          video.currentTime = time;
+        });
+      };
+
+      while (currentTime < totalDuration) {
+        await extractFrameAtTime(currentTime);
+        currentTime += frameInterval;
+      }
+
+      // Cleanup
+      URL.revokeObjectURL(videoUrl);
+      video.src = '';
+      recordedChunksRef.current = [];
+
+      console.log(`[VIDEO] Frame extraction complete. Total frames: ${extractedFrames.length}`);
+
+      if (extractedFrames.length > 0) {
+        // Use existing batch analysis service
+        await analyzeMultipleImages(extractedFrames);
+      } else {
+        console.warn('[VIDEO] No frames extracted from video!');
+        setIsCapturing(false);
+        setIsRecordingVideo(false);
+        alert('No frames could be extracted from the video. Please try again.');
+      }
+    } catch (error) {
+      console.error('[VIDEO] Error extracting frames:', error);
+      setIsCapturing(false);
+      setIsRecordingVideo(false);
+      alert('Failed to extract frames from video: ' + error.message);
+    }
   };
 
   // Optimize image: resize and compress
@@ -249,7 +473,9 @@ function App() {
         if (timeoutId) clearTimeout(timeoutId);
         setIsCapturing(false);
         setIsCapturingMultiple(false);
+        setIsRecordingVideo(false);
         setCaptureProgress(null);
+        setVideoProgress(null);
         setAnalysisProgress(null);
         console.log(`[BATCH_ANALYZE] Cleanup complete. Success: ${success}`);
       };
@@ -528,6 +754,36 @@ function App() {
         </div>
       )}
 
+      {/* Video recording overlay */}
+      {isRecordingVideo && videoProgress !== null && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">🎥</div>
+            <p className="countdown-text">
+              Recording video...
+              <br />
+              <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
+                {Math.floor(videoProgress / 60)}:{(videoProgress % 60).toString().padStart(2, '0')} / 3:00
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Video frame extraction overlay */}
+      {isRecordingVideo && videoProgress === null && isCapturing && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">⏳</div>
+            <p className="countdown-text">
+              Extracting frames from video...
+              <br />
+              Please wait
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Analysis in progress overlay */}
       {isCapturing && !isCapturingMultiple && captureProgress === null && (
         <div className="countdown-overlay">
@@ -566,11 +822,14 @@ function App() {
         socket={socket}
         onCaptureSingle={handleCaptureSingle}
         onCaptureMultiple={handleCaptureMultiple}
+        onCaptureVideo={handleCaptureVideo}
         isCapturing={isCapturing}
         isCapturingMultiple={isCapturingMultiple}
+        isRecordingVideo={isRecordingVideo}
         countdown={countdown}
         waitTimer={waitTimer}
         captureProgress={captureProgress}
+        videoProgress={videoProgress}
       />
     </div>
   );
