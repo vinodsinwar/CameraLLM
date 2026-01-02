@@ -190,7 +190,7 @@ function App() {
       mediaRecorder.start(1000); // Collect data every second
       console.log('[VIDEO] Started recording video');
 
-      // Record for 3 minutes (180 seconds)
+      // Record for 1 minute (60 seconds)
       let elapsed = 0;
       setVideoProgress(0);
 
@@ -198,14 +198,14 @@ function App() {
         elapsed += 1;
         setVideoProgress(elapsed);
 
-        if (elapsed >= 180) {
+        if (elapsed >= 60) {
           clearInterval(videoTimerRef.current);
           if (mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
           }
           stream.getTracks().forEach(track => track.stop());
           setCameraStream(null);
-          console.log('[VIDEO] Recording completed after 3 minutes');
+          console.log('[VIDEO] Recording completed after 1 minute');
         }
       }, 1000);
     } catch (error) {
@@ -731,7 +731,9 @@ function App() {
           <div className="countdown-content">
             <div className="countdown-number">{countdown}</div>
             <p className="countdown-text">
-              {countdown > 0 
+              {isRecordingVideo
+                ? `Video recording will start in ${countdown} second${countdown !== 1 ? 's' : ''}...`
+                : countdown > 0 
                 ? `Camera will be activated in ${countdown} second${countdown !== 1 ? 's' : ''}...`
                 : 'Capturing image...'}
             </p>
@@ -762,7 +764,7 @@ function App() {
               Recording video...
               <br />
               <span style={{ fontSize: '1.2em', fontWeight: 'bold' }}>
-                {Math.floor(videoProgress / 60)}:{(videoProgress % 60).toString().padStart(2, '0')} / 3:00
+                {Math.floor(videoProgress / 60)}:{(videoProgress % 60).toString().padStart(2, '0')} / 1:00
               </span>
             </p>
           </div>

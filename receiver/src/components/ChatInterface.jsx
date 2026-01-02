@@ -397,7 +397,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
               className="capture-button capture-video"
               onClick={onCaptureVideo || (() => console.warn('onCaptureVideo not provided'))}
               disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null || isLoading || !onCaptureVideo}
-              title="Capture Video (3 minutes)"
+              title="Capture Video (1 minute)"
             >
               {isRecordingVideo
                 ? videoProgress !== null
