@@ -299,7 +299,10 @@ CRITICAL RULES:
 - NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
-- Number questions sequentially starting from 1
+- CRITICAL: Preserve the ORIGINAL question numbers from the images (e.g., Pearson VUE exam software)
+- If images show "Question 5:", "Question 7:", "Question 10:", use those EXACT numbers in output
+- Do NOT renumber questions to sequential 1, 2, 3, etc. - use the actual numbers from the exam
+- The question numbers in your output must match the question numbers visible in the images
 
 Do NOT:
 - Describe the images or screenshots
