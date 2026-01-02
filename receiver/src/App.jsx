@@ -9,7 +9,7 @@ function App() {
   const [waitTimer, setWaitTimer] = useState(null); // 2-minute wait timer for multiple capture
   const [isCapturing, setIsCapturing] = useState(false);
   const [isCapturingMultiple, setIsCapturingMultiple] = useState(false);
-  const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 60, captured: 0 }
+  const [captureProgress, setCaptureProgress] = useState(null); // { elapsed: 0, total: 180, captured: 0 } - 3 minutes
   const [analysisProgress, setAnalysisProgress] = useState(null); // { stage, message, totalBatches, currentBatch, etc. }
   const [cameraStream, setCameraStream] = useState(null);
   const countdownIntervalRef = useRef(null);
