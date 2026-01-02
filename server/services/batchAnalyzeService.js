@@ -236,21 +236,37 @@ Return ONLY the output in the exact format specified above.`;
         // Recreate prompt for fallback
         const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
 
+CRITICAL: IGNORE ALL UNWANTED TEXT
+- IGNORE UI elements: navigation bars, headers, footers, buttons, menus, toolbars, sidebars
+- IGNORE browser elements: address bars, tabs, bookmarks, scrollbars, status bars
+- IGNORE application elements: window titles, close buttons, minimize buttons, menu items
+- IGNORE instructional text: "Click here", "Select an option", "Choose the best answer" (unless part of question)
+- IGNORE page numbers, timestamps, watermarks, copyright notices
+- IGNORE any text that is NOT part of an actual question or its options
+- ONLY extract actual questions (text that asks a question with multiple choice options A, B, C, D, etc.)
+- ONLY extract the question text and its corresponding options
+- Filter out everything else - be very selective about what constitutes a "question"
+
 IMPORTANT NOTES:
 - A single question may appear partially across multiple images (split across screenshots)
 - Some questions may appear more than once (duplicate screenshots)
 - Some images may contain overlapping or missing text
 - Questions may be cut off or split between images
 - Options (A, B, C, D, etc.) may appear on different images than the question text
+- Images may contain a lot of unwanted UI/interface text - IGNORE all of it
 
 YOUR TASK:
 1. Analyze ALL images together as one cohesive set to get full context
-2. Identify ALL unique questions by:
+2. Filter and identify ONLY actual questions by:
+   - IGNORING all UI elements, navigation, headers, footers, buttons, menus
+   - IGNORING all instructional or interface text that is not part of questions
+   - Identifying ONLY text that is an actual question (asks something with multiple choice options)
    - Merging partial or split question text across images
    - Combining text fragments that belong to the same question
    - Finding ALL multiple choice options (A, B, C, D, E, etc.) for each question
    - Options may appear on the same image or different images - search ALL images
    - Removing duplicate questions (same question appearing in multiple images)
+   - Being very selective - only extract actual questions, ignore everything else
 3. For each final unique question:
    - Write the COMPLETE question text
    - Write ALL available options (A, B, C, D, etc.) with their text
