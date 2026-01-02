@@ -176,6 +176,8 @@ Answer: d
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
+- IMPORTANT: Use the ACTUAL question number from the images if visible (e.g., if image shows "Question 5:", use "Question 5:")
+- If question number is NOT visible in images, use sequential numbering starting from 1
 - Then write "Options:" followed by ALL options (A, B, C, D, etc.) with their complete text
 - Then write "Answer:" followed by the answer(s)
 - For single answer: "Answer: a"
@@ -188,7 +190,7 @@ CRITICAL RULES:
 - NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
-- Number questions sequentially starting from 1
+- PRESERVE original question numbers from images when visible - do NOT renumber them
 
 Do NOT:
 - Describe the images or screenshots
@@ -287,6 +289,8 @@ Answer: d
 CRITICAL RULES:
 - Start with "total number of questions : X" where X is the count of unique questions
 - For each question, write "Question X:" followed by the complete question text
+- IMPORTANT: Use the ACTUAL question number from the images if visible (e.g., if image shows "Question 5:", use "Question 5:")
+- If question number is NOT visible in images, use sequential numbering starting from 1
 - Then write "Options:" followed by ALL options (A, B, C, D, etc.) with their complete text
 - Then write "Answer:" followed by the answer(s)
 - For single answer: "Answer: a"
@@ -299,10 +303,7 @@ CRITICAL RULES:
 - NO code blocks
 - NO duplicate questions (each question appears only once)
 - Merge partial questions and options that are split across images
-- CRITICAL: Preserve the ORIGINAL question numbers from the images (e.g., Pearson VUE exam software)
-- If images show "Question 5:", "Question 7:", "Question 10:", use those EXACT numbers in output
-- Do NOT renumber questions to sequential 1, 2, 3, etc. - use the actual numbers from the exam
-- The question numbers in your output must match the question numbers visible in the images
+- PRESERVE original question numbers from images when visible - do NOT renumber them
 
 Do NOT:
 - Describe the images or screenshots
@@ -364,8 +365,11 @@ const formatBatchAnalysis = (analysis) => {
         questions.push(currentQuestion);
       }
       // Start new question
+      // Store original number from image, and mark if it's from image or generated
+      const questionNumber = parseInt(questionMatch[1], 10);
       currentQuestion = {
-        number: parseInt(questionMatch[1], 10),
+        originalNumber: questionNumber, // Original number from image/LLM response
+        hasOriginalNumber: true, // Assume it's from image (we'll detect if it's sequential later)
         text: questionMatch[2].trim(),
         options: [],
         answer: null
@@ -418,13 +422,13 @@ const formatBatchAnalysis = (analysis) => {
     }
   }
 
-  // Sort by question number (preserve original numbers, don't renumber)
+  // Sort by question number and renumber sequentially
   uniqueQuestions.sort((a, b) => a.number - b.number);
   
-  // Build summary: "Summary: 5(a), 7(b), 10(c), ..." using original question numbers
-  const summaryParts = uniqueQuestions.map((q) => {
+  // Build summary: "Summary: 1(a), 2(b), 3(c), 4(a and b), 5(not visible), ..."
+  const summaryParts = uniqueQuestions.map((q, index) => {
     const answer = q.answer || 'not visible';
-    return `${q.number}(${answer})`;
+    return `${index + 1}(${answer})`;
   });
   const summary = `Summary: ${summaryParts.join(', ')}`;
   
@@ -436,9 +440,8 @@ const formatBatchAnalysis = (analysis) => {
     ''
   ];
   
-  // Use original question numbers from images, not sequential numbering
-  uniqueQuestions.forEach((q) => {
-    output.push(`Question ${q.number}: ${q.text}`);
+  uniqueQuestions.forEach((q, index) => {
+    output.push(`Question ${index + 1}: ${q.text}`);
     if (q.options && q.options.length > 0) {
       output.push('Options:');
       q.options.forEach(opt => {
