@@ -250,7 +250,6 @@ function App() {
       let frameCount = 0;
 
       // Log video info for debugging
-      const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const videoSizeMB = (videoBlob.size / 1024 / 1024).toFixed(2);
       console.log(`[VIDEO] Video duration: ${totalDuration.toFixed(2)}s, size: ${videoSizeMB} MB, extracting frames every ${frameInterval}s`);
 
