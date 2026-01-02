@@ -19,7 +19,8 @@ const getGeminiClient = () => {
       throw new Error('Gemini API key not configured');
     }
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Use Gemini 3 Flash for better question extraction and accuracy
+    visionModel = genAI.getGenerativeModel({ model: 'gemini-3-flash' });
   }
   return visionModel;
 };
