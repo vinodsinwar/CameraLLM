@@ -993,6 +993,14 @@
   background: #45a049;
 }
 
+.capture-button.capture-video {
+  background: #ff9800;
+}
+
+.capture-button.capture-video:hover:not(:disabled) {
+  background: #f57c00;
+}
+
 .capture-button {
   background: #1976d2;
   color: #ffffff;
