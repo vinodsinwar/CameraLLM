@@ -181,17 +181,25 @@ function App() {
         }
       };
 
+      mediaRecorder.onstart = () => {
+        console.log('[VIDEO] ===== onstart FIRED =====');
+        console.log('[VIDEO] MediaRecorder started successfully, state:', mediaRecorder.state);
+      };
+
       mediaRecorder.onstop = async () => {
+        console.log('[VIDEO] ===== onstop FIRED =====');
         console.log('[VIDEO] Recording stopped. Total chunks:', recordedChunksRef.current.length);
         console.log('[VIDEO] Total data size:', recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes');
         
         // Clear timer if still running
         if (videoTimerRef.current) {
+          console.log('[VIDEO] Clearing timer in onstop');
           clearInterval(videoTimerRef.current);
           videoTimerRef.current = null;
         }
         
         try {
+          console.log('[VIDEO] Starting frame extraction...');
           await extractFramesFromVideo();
         } catch (error) {
           console.error('[VIDEO] Error in onstop handler:', error);
@@ -213,41 +221,61 @@ function App() {
       };
 
       // Start recording
+      console.log('[VIDEO] Starting MediaRecorder...');
       mediaRecorder.start(1000); // Collect data every second
-      console.log('[VIDEO] Started recording video');
+      console.log('[VIDEO] MediaRecorder started, state:', mediaRecorder.state);
 
       // Record for 1 minute (60 seconds)
-      let elapsed = 0;
+      // Use ref to avoid closure issues
+      const elapsedRef = { current: 0 };
       setVideoProgress(0);
-      console.log('[VIDEO] Timer started, will record for 60 seconds');
+      console.log('[VIDEO] Timer starting, will record for 60 seconds');
 
+      // Start timer immediately
       videoTimerRef.current = setInterval(() => {
-        elapsed += 1;
-        console.log(`[VIDEO] Timer tick: ${elapsed} seconds`);
-        setVideoProgress(elapsed);
+        elapsedRef.current += 1;
+        const currentElapsed = elapsedRef.current;
+        console.log(`[VIDEO] Timer tick: ${currentElapsed} seconds, MediaRecorder state: ${mediaRecorder.state}`);
+        
+        // Force state update
+        setVideoProgress(currentElapsed);
 
-        if (elapsed >= 60) {
+        if (currentElapsed >= 60) {
           console.log('[VIDEO] 60 seconds reached, stopping recording...');
-          clearInterval(videoTimerRef.current);
-          videoTimerRef.current = null;
+          const timerId = videoTimerRef.current;
+          if (timerId) {
+            clearInterval(timerId);
+            videoTimerRef.current = null;
+          }
           
           // Stop recording
           try {
+            console.log('[VIDEO] MediaRecorder state before stop:', mediaRecorder.state);
             if (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused') {
-              console.log('[VIDEO] Stopping mediaRecorder...');
+              console.log('[VIDEO] Calling mediaRecorder.stop()...');
               mediaRecorder.stop();
+              console.log('[VIDEO] mediaRecorder.stop() called, new state:', mediaRecorder.state);
             } else {
               console.warn(`[VIDEO] MediaRecorder state is ${mediaRecorder.state}, cannot stop`);
+              // Force cleanup if recorder is already stopped
+              if (mediaRecorder.state === 'inactive') {
+                console.log('[VIDEO] Recorder already inactive, proceeding with cleanup');
+                extractFramesFromVideo();
+              }
             }
           } catch (e) {
             console.error('[VIDEO] Error stopping mediaRecorder:', e);
+            // Try to extract frames anyway
+            extractFramesFromVideo();
           }
           
           // Stop camera stream
           try {
             stream.getTracks().forEach(track => {
-              track.stop();
-              console.log('[VIDEO] Stopped track:', track.kind);
+              if (track.readyState === 'live') {
+                track.stop();
+                console.log('[VIDEO] Stopped track:', track.kind);
+              }
             });
             setCameraStream(null);
           } catch (e) {
@@ -257,6 +285,13 @@ function App() {
           console.log('[VIDEO] Recording completed after 1 minute');
         }
       }, 1000);
+
+      // Verify timer started
+      if (videoTimerRef.current) {
+        console.log('[VIDEO] Timer interval created successfully');
+      } else {
+        console.error('[VIDEO] FAILED to create timer interval!');
+      }
 
       // Safety timeout: if recording doesn't stop after 70 seconds, force stop
       setTimeout(() => {
