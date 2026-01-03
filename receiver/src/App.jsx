@@ -182,8 +182,34 @@ function App() {
       };
 
       mediaRecorder.onstop = async () => {
-        console.log('[VIDEO] Recording stopped. Extracting frames...');
-        await extractFramesFromVideo();
+        console.log('[VIDEO] Recording stopped. Total chunks:', recordedChunksRef.current.length);
+        console.log('[VIDEO] Total data size:', recordedChunksRef.current.reduce((sum, chunk) => sum + chunk.size, 0), 'bytes');
+        
+        // Clear timer if still running
+        if (videoTimerRef.current) {
+          clearInterval(videoTimerRef.current);
+          videoTimerRef.current = null;
+        }
+        
+        try {
+          await extractFramesFromVideo();
+        } catch (error) {
+          console.error('[VIDEO] Error in onstop handler:', error);
+          setIsCapturing(false);
+          setIsRecordingVideo(false);
+          setVideoProgress(null);
+          setAnalysisProgress(null);
+          alert('Error processing video: ' + error.message);
+        }
+      };
+
+      mediaRecorder.onerror = (event) => {
+        console.error('[VIDEO] MediaRecorder error:', event.error);
+        clearInterval(videoTimerRef.current);
+        videoTimerRef.current = null;
+        setIsRecordingVideo(false);
+        setVideoProgress(null);
+        alert('Video recording error: ' + (event.error?.message || 'Unknown error'));
       };
 
       // Start recording
@@ -193,21 +219,72 @@ function App() {
       // Record for 1 minute (60 seconds)
       let elapsed = 0;
       setVideoProgress(0);
+      console.log('[VIDEO] Timer started, will record for 60 seconds');
 
       videoTimerRef.current = setInterval(() => {
         elapsed += 1;
+        console.log(`[VIDEO] Timer tick: ${elapsed} seconds`);
         setVideoProgress(elapsed);
 
         if (elapsed >= 60) {
+          console.log('[VIDEO] 60 seconds reached, stopping recording...');
           clearInterval(videoTimerRef.current);
-          if (mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
+          videoTimerRef.current = null;
+          
+          // Stop recording
+          try {
+            if (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused') {
+              console.log('[VIDEO] Stopping mediaRecorder...');
+              mediaRecorder.stop();
+            } else {
+              console.warn(`[VIDEO] MediaRecorder state is ${mediaRecorder.state}, cannot stop`);
+            }
+          } catch (e) {
+            console.error('[VIDEO] Error stopping mediaRecorder:', e);
           }
-          stream.getTracks().forEach(track => track.stop());
-          setCameraStream(null);
+          
+          // Stop camera stream
+          try {
+            stream.getTracks().forEach(track => {
+              track.stop();
+              console.log('[VIDEO] Stopped track:', track.kind);
+            });
+            setCameraStream(null);
+          } catch (e) {
+            console.error('[VIDEO] Error stopping stream:', e);
+          }
+          
           console.log('[VIDEO] Recording completed after 1 minute');
         }
       }, 1000);
+
+      // Safety timeout: if recording doesn't stop after 70 seconds, force stop
+      setTimeout(() => {
+        if (videoTimerRef.current) {
+          console.warn('[VIDEO] Safety timeout reached, force stopping...');
+          clearInterval(videoTimerRef.current);
+          videoTimerRef.current = null;
+          
+          try {
+            if (mediaRecorder.state !== 'inactive') {
+              mediaRecorder.stop();
+            }
+          } catch (e) {
+            console.error('[VIDEO] Error in safety timeout:', e);
+          }
+          
+          try {
+            stream.getTracks().forEach(track => track.stop());
+            setCameraStream(null);
+          } catch (e) {
+            console.error('[VIDEO] Error stopping stream in timeout:', e);
+          }
+          
+          setIsRecordingVideo(false);
+          setVideoProgress(null);
+          alert('Video recording timed out. Please try again.');
+        }
+      }, 70000); // 70 seconds safety timeout
     } catch (error) {
       console.error('Error in video recording:', error);
       setIsRecordingVideo(false);
