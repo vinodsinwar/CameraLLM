@@ -237,8 +237,14 @@ function App() {
         const currentElapsed = elapsedRef.current;
         console.log(`[VIDEO] Timer tick: ${currentElapsed} seconds, MediaRecorder state: ${mediaRecorder.state}`);
         
-        // Force state update
-        setVideoProgress(currentElapsed);
+        // Force state update - use functional update to ensure it works
+        setVideoProgress(prev => {
+          // If prev is different, log it
+          if (prev !== currentElapsed) {
+            console.log(`[VIDEO] State update: ${prev} -> ${currentElapsed}`);
+          }
+          return currentElapsed;
+        });
 
         if (currentElapsed >= 60) {
           console.log('[VIDEO] 60 seconds reached, stopping recording...');
