@@ -218,9 +218,17 @@ function App() {
 
   const extractFramesFromVideo = async () => {
     try {
-      console.log('[VIDEO] Starting frame extraction...');
+      console.log('[VIDEO] Starting optimized frame extraction...');
       setIsCapturing(true);
       setVideoProgress(null);
+
+      // Show extraction progress
+      setAnalysisProgress({
+        stage: 'extracting',
+        message: 'Extracting frames from video...',
+        totalImages: 0,
+        processedImages: 0
+      });
 
       // Create blob from recorded chunks
       const videoBlob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
@@ -231,6 +239,7 @@ function App() {
       video.src = videoUrl;
       video.muted = true;
       video.playsInline = true;
+      video.preload = 'metadata';
 
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = () => {
@@ -240,47 +249,57 @@ function App() {
         video.onerror = reject;
       });
 
-      // Wait for video to be ready
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Reduced wait time
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const extractedFrames = [];
-      const frameInterval = 2; // Extract frame every 2 seconds
+      const frameInterval = 3; // Extract every 3 seconds (reduced from 2 for fewer frames = faster)
       const totalDuration = video.duration;
-      let currentTime = 0;
-      let frameCount = 0;
+      const frameTimes = [];
+      
+      // Calculate all frame times upfront
+      for (let time = 0; time < totalDuration; time += frameInterval) {
+        frameTimes.push(time);
+      }
 
-      // Log video info for debugging
+      // Log video info
       const videoSizeMB = (videoBlob.size / 1024 / 1024).toFixed(2);
-      console.log(`[VIDEO] Video duration: ${totalDuration.toFixed(2)}s, size: ${videoSizeMB} MB, extracting frames every ${frameInterval}s`);
+      console.log(`[VIDEO] Duration: ${totalDuration.toFixed(2)}s, size: ${videoSizeMB} MB, extracting ${frameTimes.length} frames every ${frameInterval}s`);
 
-      // Extract frames at intervals
-      const extractFrameAtTime = async (time) => {
+      // Optimized: Extract frames with minimal delays and batch optimization
+      const extractFrameAtTime = async (time, index) => {
         return new Promise((resolve) => {
-          const onSeeked = async () => {
+          const onSeeked = () => {
             video.removeEventListener('seeked', onSeeked);
-            // Wait a bit for frame to render
-            await new Promise(r => setTimeout(r, 100));
-            try {
-              const canvas = document.createElement('canvas');
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(video, 0, 0);
+            
+            // Use requestAnimationFrame for better performance
+            requestAnimationFrame(() => {
+              try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
 
-              // Use lower quality for frames since they're from optimized video
-              const frameData = canvas.toDataURL('image/jpeg', 0.75);
-              
-              // Optimize frame before storing (already constrained to 1280x720 from video)
-              const optimizedFrame = await optimizeImage(frameData, 1280, 720, 0.7);
-              extractedFrames.push(optimizedFrame);
-              frameCount++;
-
-              console.log(`[VIDEO] Extracted frame ${frameCount} at ${time.toFixed(2)}s. Size: ${(optimizedFrame.length / 1024).toFixed(2)} KB`);
-              resolve();
-            } catch (err) {
-              console.error(`[VIDEO] Error extracting frame at ${time}s:`, err);
-              resolve(); // Continue even if one frame fails
-            }
+                // Direct extraction without optimization (optimize later in batch)
+                const frameData = canvas.toDataURL('image/jpeg', 0.7);
+                extractedFrames[index] = frameData; // Store at correct index
+                
+                // Update progress
+                const processed = extractedFrames.filter(f => f).length;
+                setAnalysisProgress({
+                  stage: 'extracting',
+                  message: `Extracting frames... ${processed}/${frameTimes.length}`,
+                  totalImages: frameTimes.length,
+                  processedImages: processed
+                });
+                
+                resolve();
+              } catch (err) {
+                console.error(`[VIDEO] Error extracting frame at ${time}s:`, err);
+                resolve(); // Continue even if one frame fails
+              }
+            });
           };
           
           video.addEventListener('seeked', onSeeked);
@@ -288,31 +307,59 @@ function App() {
         });
       };
 
-      while (currentTime < totalDuration) {
-        await extractFrameAtTime(currentTime);
-        currentTime += frameInterval;
+      // Extract frames sequentially (but faster with reduced delays)
+      for (let i = 0; i < frameTimes.length; i++) {
+        await extractFrameAtTime(frameTimes[i], i);
       }
+
+      // Filter out any failed extractions
+      const validFrames = extractedFrames.filter(f => f);
+      
+      console.log(`[VIDEO] Extracted ${validFrames.length} frames. Optimizing in batch...`);
+
+      // Batch optimize all frames in parallel (much faster)
+      setAnalysisProgress({
+        stage: 'optimizing',
+        message: `Optimizing ${validFrames.length} frames...`,
+        totalImages: validFrames.length,
+        processedImages: 0
+      });
+
+      const optimizedFrames = await Promise.all(
+        validFrames.map(async (frameData, index) => {
+          const optimized = await optimizeImage(frameData, 1280, 720, 0.7);
+          setAnalysisProgress({
+            stage: 'optimizing',
+            message: `Optimizing frames... ${index + 1}/${validFrames.length}`,
+            totalImages: validFrames.length,
+            processedImages: index + 1
+          });
+          return optimized;
+        })
+      );
 
       // Cleanup
       URL.revokeObjectURL(videoUrl);
       video.src = '';
       recordedChunksRef.current = [];
 
-      console.log(`[VIDEO] Frame extraction complete. Total frames: ${extractedFrames.length}`);
+      console.log(`[VIDEO] Frame extraction and optimization complete. Total frames: ${optimizedFrames.length}`);
 
-      if (extractedFrames.length > 0) {
+      if (optimizedFrames.length > 0) {
         // Use existing batch analysis service
-        await analyzeMultipleImages(extractedFrames);
+        await analyzeMultipleImages(optimizedFrames);
       } else {
         console.warn('[VIDEO] No frames extracted from video!');
         setIsCapturing(false);
         setIsRecordingVideo(false);
+        setAnalysisProgress(null);
         alert('No frames could be extracted from the video. Please try again.');
       }
     } catch (error) {
       console.error('[VIDEO] Error extracting frames:', error);
       setIsCapturing(false);
       setIsRecordingVideo(false);
+      setAnalysisProgress(null);
       alert('Failed to extract frames from video: ' + error.message);
     }
   };
@@ -772,14 +819,40 @@ function App() {
       )}
 
       {/* Video frame extraction overlay */}
-      {isRecordingVideo && videoProgress === null && isCapturing && (
+      {isRecordingVideo && videoProgress === null && isCapturing && analysisProgress && analysisProgress.stage === 'extracting' && (
         <div className="countdown-overlay">
           <div className="countdown-content">
             <div className="countdown-number">⏳</div>
             <p className="countdown-text">
-              Extracting frames from video...
-              <br />
-              Please wait
+              {analysisProgress.message || 'Extracting frames from video...'}
+              {analysisProgress.totalImages > 0 && (
+                <>
+                  <br />
+                  <span style={{ fontSize: '0.8em', opacity: 0.8 }}>
+                    {analysisProgress.processedImages || 0} / {analysisProgress.totalImages} frames
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Video frame optimization overlay */}
+      {isRecordingVideo && videoProgress === null && isCapturing && analysisProgress && analysisProgress.stage === 'optimizing' && (
+        <div className="countdown-overlay">
+          <div className="countdown-content">
+            <div className="countdown-number">⚙️</div>
+            <p className="countdown-text">
+              {analysisProgress.message || 'Optimizing frames...'}
+              {analysisProgress.totalImages > 0 && (
+                <>
+                  <br />
+                  <span style={{ fontSize: '0.8em', opacity: 0.8 }}>
+                    {analysisProgress.processedImages || 0} / {analysisProgress.totalImages} frames
+                  </span>
+                </>
+              )}
             </p>
           </div>
         </div>
