@@ -222,35 +222,41 @@ function App() {
 
       // Start recording
       console.log('[VIDEO] Starting MediaRecorder...');
-      mediaRecorder.start(1000); // Collect data every second
-      console.log('[VIDEO] MediaRecorder started, state:', mediaRecorder.state);
+      
+      try {
+        mediaRecorder.start(1000); // Collect data every second
+        console.log('[VIDEO] MediaRecorder.start() called, state:', mediaRecorder.state);
+      } catch (startError) {
+        console.error('[VIDEO] Error starting MediaRecorder:', startError);
+        throw startError;
+      }
 
       // Record for 1 minute (60 seconds)
       // Use ref to avoid closure issues
       const elapsedRef = { current: 0 };
       setVideoProgress(0);
       console.log('[VIDEO] Timer starting, will record for 60 seconds');
+      console.log('[VIDEO] videoTimerRef before setInterval:', videoTimerRef.current);
 
-      // Start timer immediately
-      videoTimerRef.current = setInterval(() => {
+      // Start timer immediately - store in variable first
+      const timerCallback = () => {
         elapsedRef.current += 1;
         const currentElapsed = elapsedRef.current;
-        console.log(`[VIDEO] Timer tick: ${currentElapsed} seconds, MediaRecorder state: ${mediaRecorder.state}`);
+        console.log(`[VIDEO] ⏱️ Timer tick: ${currentElapsed} seconds, MediaRecorder state: ${mediaRecorder.state}`);
         
         // Force state update - use functional update to ensure it works
         setVideoProgress(prev => {
-          // If prev is different, log it
-          if (prev !== currentElapsed) {
-            console.log(`[VIDEO] State update: ${prev} -> ${currentElapsed}`);
+          const newValue = currentElapsed;
+          if (prev !== newValue) {
+            console.log(`[VIDEO] 📊 State update: ${prev} -> ${newValue}`);
           }
-          return currentElapsed;
+          return newValue;
         });
 
         if (currentElapsed >= 60) {
-          console.log('[VIDEO] 60 seconds reached, stopping recording...');
-          const timerId = videoTimerRef.current;
-          if (timerId) {
-            clearInterval(timerId);
+          console.log('[VIDEO] ⏹️ 60 seconds reached, stopping recording...');
+          if (videoTimerRef.current) {
+            clearInterval(videoTimerRef.current);
             videoTimerRef.current = null;
           }
           
@@ -260,7 +266,7 @@ function App() {
             if (mediaRecorder.state === 'recording' || mediaRecorder.state === 'paused') {
               console.log('[VIDEO] Calling mediaRecorder.stop()...');
               mediaRecorder.stop();
-              console.log('[VIDEO] mediaRecorder.stop() called, new state:', mediaRecorder.state);
+              console.log('[VIDEO] mediaRecorder.stop() called');
             } else {
               console.warn(`[VIDEO] MediaRecorder state is ${mediaRecorder.state}, cannot stop`);
               // Force cleanup if recorder is already stopped
@@ -290,13 +296,27 @@ function App() {
           
           console.log('[VIDEO] Recording completed after 1 minute');
         }
-      }, 1000);
+      };
+      
+      const timerId = setInterval(timerCallback, 1000);
+      videoTimerRef.current = timerId;
 
       // Verify timer started
       if (videoTimerRef.current) {
-        console.log('[VIDEO] Timer interval created successfully');
+        console.log('[VIDEO] ✅ Timer interval created successfully, ID:', videoTimerRef.current);
+        // Test immediate update after 1 second
+        setTimeout(() => {
+          console.log('[VIDEO] 🔍 Testing timer after 1 second...');
+          console.log('[VIDEO] elapsedRef.current:', elapsedRef.current);
+          console.log('[VIDEO] videoProgress state should be:', elapsedRef.current);
+          if (elapsedRef.current === 0) {
+            console.error('[VIDEO] ❌ Timer is NOT running! elapsedRef is still 0');
+          } else {
+            console.log('[VIDEO] ✅ Timer is running! elapsedRef:', elapsedRef.current);
+          }
+        }, 1100);
       } else {
-        console.error('[VIDEO] FAILED to create timer interval!');
+        console.error('[VIDEO] ❌ FAILED to create timer interval!');
       }
 
       // Safety timeout: if recording doesn't stop after 70 seconds, force stop
