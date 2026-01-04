@@ -475,14 +475,47 @@ function App() {
 
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = () => {
+          console.log('[VIDEO] Video metadata loaded');
+          console.log('[VIDEO] Video dimensions:', video.videoWidth, 'x', video.videoHeight);
+          console.log('[VIDEO] Video duration:', video.duration);
+          
+          // Validate video is ready
+          if (!video.videoWidth || !video.videoHeight || video.duration <= 0) {
+            console.error('[VIDEO] Invalid video metadata:', {
+              width: video.videoWidth,
+              height: video.videoHeight,
+              duration: video.duration
+            });
+            reject(new Error('Invalid video metadata - video may not be ready'));
+            return;
+          }
+          
           video.currentTime = 0;
           resolve();
         };
-        video.onerror = reject;
+        video.onerror = (err) => {
+          console.error('[VIDEO] Video load error:', err);
+          reject(new Error('Failed to load video: ' + (err.message || 'Unknown error')));
+        };
+        
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          if (video.readyState < 2) { // HAVE_METADATA = 2
+            console.error('[VIDEO] Video metadata load timeout');
+            reject(new Error('Video metadata load timeout'));
+          }
+        }, 5000);
       });
 
-      // Reduced wait time
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Wait for video to be ready and dimensions to be available
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Double-check dimensions are available
+      if (!video.videoWidth || !video.videoHeight) {
+        throw new Error(`Video dimensions not available: ${video.videoWidth}x${video.videoHeight}`);
+      }
+      
+      console.log('[VIDEO] Video ready, dimensions confirmed:', video.videoWidth, 'x', video.videoHeight);
 
       const extractedFrames = [];
       const frameInterval = 3; // Extract every 3 seconds (reduced from 2 for fewer frames = faster)
