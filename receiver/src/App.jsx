@@ -475,47 +475,14 @@ function App() {
 
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = () => {
-          console.log('[VIDEO] Video metadata loaded');
-          console.log('[VIDEO] Video dimensions:', video.videoWidth, 'x', video.videoHeight);
-          console.log('[VIDEO] Video duration:', video.duration);
-          
-          // Validate video is ready
-          if (!video.videoWidth || !video.videoHeight || video.duration <= 0) {
-            console.error('[VIDEO] Invalid video metadata:', {
-              width: video.videoWidth,
-              height: video.videoHeight,
-              duration: video.duration
-            });
-            reject(new Error('Invalid video metadata - video may not be ready'));
-            return;
-          }
-          
           video.currentTime = 0;
           resolve();
         };
-        video.onerror = (err) => {
-          console.error('[VIDEO] Video load error:', err);
-          reject(new Error('Failed to load video: ' + (err.message || 'Unknown error')));
-        };
-        
-        // Timeout after 5 seconds
-        setTimeout(() => {
-          if (video.readyState < 2) { // HAVE_METADATA = 2
-            console.error('[VIDEO] Video metadata load timeout');
-            reject(new Error('Video metadata load timeout'));
-          }
-        }, 5000);
+        video.onerror = reject;
       });
 
-      // Wait for video to be ready and dimensions to be available
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Double-check dimensions are available
-      if (!video.videoWidth || !video.videoHeight) {
-        throw new Error(`Video dimensions not available: ${video.videoWidth}x${video.videoHeight}`);
-      }
-      
-      console.log('[VIDEO] Video ready, dimensions confirmed:', video.videoWidth, 'x', video.videoHeight);
+      // Reduced wait time
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const extractedFrames = [];
       const frameInterval = 3; // Extract every 3 seconds (reduced from 2 for fewer frames = faster)
@@ -553,41 +520,10 @@ function App() {
                 console.log(`[VIDEO] Extracting frame ${index} at ${time.toFixed(2)}s, dimensions: ${videoWidth}x${videoHeight}`);
                 
                 const canvas = document.createElement('canvas');
-                
-                // Set dimensions with validation - use Math.floor to ensure integers
-                try {
-                  const width = Math.floor(videoWidth);
-                  const height = Math.floor(videoHeight);
-                  
-                  // Additional validation
-                  if (!isFinite(width) || !isFinite(height) || width <= 0 || height <= 0 || width > 10000 || height > 10000) {
-                    throw new Error(`Invalid calculated dimensions: ${width}x${height}`);
-                  }
-                  
-                  canvas.width = width;
-                  canvas.height = height;
-                  
-                  // Verify dimensions were set correctly
-                  if (canvas.width !== width || canvas.height !== height) {
-                    throw new Error(`Canvas dimensions mismatch: expected ${width}x${height}, got ${canvas.width}x${canvas.height}`);
-                  }
-                  
-                  console.log(`[VIDEO] Canvas created: ${canvas.width}x${canvas.height}`);
-                } catch (dimError) {
-                  console.error(`[VIDEO] ❌ Error setting canvas dimensions:`, dimError);
-                  console.error(`[VIDEO] Video dimensions were: ${videoWidth}x${videoHeight}`);
-                  resolve(); // Skip this frame
-                  return;
-                }
-                
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
                 const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                  console.error(`[VIDEO] ❌ Failed to get canvas context`);
-                  resolve(); // Skip this frame
-                  return;
-                }
-                
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
 
                 // Direct extraction without optimization (optimize later in batch)
                 const frameData = canvas.toDataURL('image/jpeg', 0.7);
@@ -629,10 +565,14 @@ function App() {
         await extractFrameAtTime(frameTimes[i], i);
       }
 
-      // Filter out any failed extractions
-      const validFrames = extractedFrames.filter(f => f);
+      // Filter out any failed extractions - ensure we only have valid frame data
+      const validFrames = extractedFrames.filter(f => f && typeof f === 'string' && f.length > 0);
       
-      console.log(`[VIDEO] Extracted ${validFrames.length} frames. Optimizing in batch...`);
+      console.log(`[VIDEO] Extracted ${validFrames.length} valid frames out of ${extractedFrames.length} total. Optimizing in batch...`);
+
+      if (validFrames.length === 0) {
+        throw new Error('No valid frames extracted from video');
+      }
 
       // Batch optimize all frames in parallel (much faster)
       setAnalysisProgress({
@@ -642,29 +582,49 @@ function App() {
         processedImages: 0
       });
 
-      const optimizedFrames = await Promise.all(
+      // Optimize frames with error handling for each frame
+      const optimizedFrames = await Promise.allSettled(
         validFrames.map(async (frameData, index) => {
-          const optimized = await optimizeImage(frameData, 1280, 720, 0.7);
-          setAnalysisProgress({
-            stage: 'optimizing',
-            message: `Optimizing frames... ${index + 1}/${validFrames.length}`,
-            totalImages: validFrames.length,
-            processedImages: index + 1
-          });
-          return optimized;
+          try {
+            const optimized = await optimizeImage(frameData, 1280, 720, 0.7);
+            setAnalysisProgress({
+              stage: 'optimizing',
+              message: `Optimizing frames... ${index + 1}/${validFrames.length}`,
+              totalImages: validFrames.length,
+              processedImages: index + 1
+            });
+            return optimized;
+          } catch (err) {
+            console.error(`[VIDEO] Error optimizing frame ${index}:`, err);
+            return null; // Return null for failed frames
+          }
         })
       );
+
+      // Extract only successful optimizations
+      const successfulFrames = optimizedFrames
+        .map((result, index) => result.status === 'fulfilled' && result.value ? result.value : null)
+        .filter(f => f !== null);
+
+      console.log(`[VIDEO] Successfully optimized ${successfulFrames.length} out of ${validFrames.length} frames`);
+
+      if (successfulFrames.length === 0) {
+        throw new Error('Failed to optimize any frames');
+      }
+
+      // Use successfulFrames instead of optimizedFrames
+      const finalFrames = successfulFrames;
 
       // Cleanup
       URL.revokeObjectURL(videoUrl);
       video.src = '';
       recordedChunksRef.current = [];
 
-      console.log(`[VIDEO] Frame extraction and optimization complete. Total frames: ${optimizedFrames.length}`);
+      console.log(`[VIDEO] Frame extraction and optimization complete. Total frames: ${finalFrames.length}`);
 
-      if (optimizedFrames.length > 0) {
+      if (finalFrames.length > 0) {
         // Use existing batch analysis service
-        await analyzeMultipleImages(optimizedFrames);
+        await analyzeMultipleImages(finalFrames);
       } else {
         console.warn('[VIDEO] No frames extracted from video!');
         setIsCapturing(false);

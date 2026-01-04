@@ -245,6 +245,10 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
     const checkForNewImages = async () => {
       try {
         const response = await fetch('/api/latest-image');
+        if (!response.ok) {
+          // Silently fail if endpoint doesn't exist (404) - this is optional
+          return;
+        }
         const data = await response.json();
         
         if (data.success && data.imageId) {
