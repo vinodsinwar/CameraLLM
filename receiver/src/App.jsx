@@ -553,10 +553,41 @@ function App() {
                 console.log(`[VIDEO] Extracting frame ${index} at ${time.toFixed(2)}s, dimensions: ${videoWidth}x${videoHeight}`);
                 
                 const canvas = document.createElement('canvas');
-                canvas.width = videoWidth;
-                canvas.height = videoHeight;
+                
+                // Set dimensions with validation - use Math.floor to ensure integers
+                try {
+                  const width = Math.floor(videoWidth);
+                  const height = Math.floor(videoHeight);
+                  
+                  // Additional validation
+                  if (!isFinite(width) || !isFinite(height) || width <= 0 || height <= 0 || width > 10000 || height > 10000) {
+                    throw new Error(`Invalid calculated dimensions: ${width}x${height}`);
+                  }
+                  
+                  canvas.width = width;
+                  canvas.height = height;
+                  
+                  // Verify dimensions were set correctly
+                  if (canvas.width !== width || canvas.height !== height) {
+                    throw new Error(`Canvas dimensions mismatch: expected ${width}x${height}, got ${canvas.width}x${canvas.height}`);
+                  }
+                  
+                  console.log(`[VIDEO] Canvas created: ${canvas.width}x${canvas.height}`);
+                } catch (dimError) {
+                  console.error(`[VIDEO] ❌ Error setting canvas dimensions:`, dimError);
+                  console.error(`[VIDEO] Video dimensions were: ${videoWidth}x${videoHeight}`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+                if (!ctx) {
+                  console.error(`[VIDEO] ❌ Failed to get canvas context`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
                 // Direct extraction without optimization (optimize later in batch)
                 const frameData = canvas.toDataURL('image/jpeg', 0.7);
