@@ -26,7 +26,9 @@ function App() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log('[CLEANUP] Component unmounting, cleaning up intervals...');
       if (countdownIntervalRef.current) {
+        console.log('[CLEANUP] Clearing countdown interval:', countdownIntervalRef.current);
         clearInterval(countdownIntervalRef.current);
       }
       if (waitTimerIntervalRef.current) {
