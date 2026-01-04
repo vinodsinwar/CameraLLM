@@ -143,17 +143,25 @@ function App() {
       console.log('[VIDEO] Starting 5-second countdown...');
       console.log('[VIDEO] countdownIntervalRef before setInterval:', countdownIntervalRef.current);
 
-      // Create countdown callback function
+      // Create countdown callback function - use arrow function to preserve context
       const countdownCallback = () => {
+        console.log('[VIDEO] 🔔 countdownCallback EXECUTED!');
         countdownRef.current -= 1;
         const currentCountdown = countdownRef.current;
-        console.log(`[VIDEO] ⏳ Countdown tick: ${currentCountdown}`);
-        setCountdown(currentCountdown);
+        console.log(`[VIDEO] ⏳ Countdown tick: ${currentCountdown}, countdownRef.current: ${countdownRef.current}`);
+        
+        // Use functional update to ensure state updates
+        setCountdown(prev => {
+          console.log(`[VIDEO] setCountdown called: ${prev} -> ${currentCountdown}`);
+          return currentCountdown;
+        });
 
         if (currentCountdown <= 0) {
           console.log('[VIDEO] ===== Countdown finished =====');
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
+          const intervalId = countdownIntervalRef.current;
+          if (intervalId) {
+            console.log('[VIDEO] Clearing countdown interval, ID:', intervalId);
+            clearInterval(intervalId);
             countdownIntervalRef.current = null;
           }
           setCountdown(null);
@@ -173,17 +181,33 @@ function App() {
         }
       };
 
-      // Start countdown interval
+      // Start countdown interval - test immediately
+      console.log('[VIDEO] About to create setInterval...');
       const countdownIntervalId = setInterval(countdownCallback, 1000);
       countdownIntervalRef.current = countdownIntervalId;
       console.log('[VIDEO] ✅ Countdown interval created, ID:', countdownIntervalId);
+      console.log('[VIDEO] countdownIntervalRef.current after assignment:', countdownIntervalRef.current);
       
-      // Test countdown after 1 second
+      // Test immediately and after 1 second
+      console.log('[VIDEO] 🔍 Testing countdown immediately...');
+      console.log('[VIDEO] countdownRef.current:', countdownRef.current);
+      console.log('[VIDEO] Interval ID stored:', countdownIntervalRef.current);
+      
       setTimeout(() => {
         console.log('[VIDEO] 🔍 Testing countdown after 1 second...');
         console.log('[VIDEO] countdownRef.current:', countdownRef.current);
+        console.log('[VIDEO] countdownIntervalRef.current:', countdownIntervalRef.current);
         if (countdownRef.current === 5) {
           console.error('[VIDEO] ❌ Countdown is NOT running! Still at 5');
+          console.error('[VIDEO] Interval ID:', countdownIntervalRef.current);
+          // Try to manually trigger to see if callback works
+          console.log('[VIDEO] Attempting manual callback test...');
+          try {
+            countdownCallback();
+            console.log('[VIDEO] Manual callback executed successfully');
+          } catch (e) {
+            console.error('[VIDEO] Manual callback failed:', e);
+          }
         } else {
           console.log('[VIDEO] ✅ Countdown is running! Value:', countdownRef.current);
         }
