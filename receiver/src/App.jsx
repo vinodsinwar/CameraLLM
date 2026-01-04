@@ -136,7 +136,16 @@ function App() {
         if (remaining <= 0) {
           clearInterval(countdownIntervalRef.current);
           setCountdown(null);
-          startVideoRecording(stream);
+          console.log('[VIDEO] ===== Countdown finished, calling startVideoRecording =====');
+          console.log('[VIDEO] Stream state:', stream.active, stream.getTracks().length);
+          try {
+            startVideoRecording(stream);
+          } catch (error) {
+            console.error('[VIDEO] ❌ Error in startVideoRecording:', error);
+            setIsRecordingVideo(false);
+            setVideoProgress(null);
+            alert('Failed to start video recording: ' + error.message);
+          }
         }
       }, 1000);
     } catch (error) {
