@@ -137,25 +137,32 @@ function App() {
       setCameraStream(stream);
 
       // Start 5-second countdown before recording
-      let remaining = 5;
-      setCountdown(remaining);
+      // Use ref to avoid closure issues
+      const countdownRef = { current: 5 };
+      setCountdown(5);
       console.log('[VIDEO] Starting 5-second countdown...');
+      console.log('[VIDEO] countdownIntervalRef before setInterval:', countdownIntervalRef.current);
 
-      countdownIntervalRef.current = setInterval(() => {
-        remaining -= 1;
-        setCountdown(remaining);
-        console.log(`[VIDEO] Countdown: ${remaining}`);
+      // Create countdown callback function
+      const countdownCallback = () => {
+        countdownRef.current -= 1;
+        const currentCountdown = countdownRef.current;
+        console.log(`[VIDEO] ⏳ Countdown tick: ${currentCountdown}`);
+        setCountdown(currentCountdown);
 
-        if (remaining <= 0) {
+        if (currentCountdown <= 0) {
           console.log('[VIDEO] ===== Countdown finished =====');
-          clearInterval(countdownIntervalRef.current);
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
           setCountdown(null);
           console.log('[VIDEO] Calling startVideoRecording...');
           console.log('[VIDEO] Stream state:', stream.active, stream.getTracks().length);
           
           try {
             startVideoRecording(stream);
-            console.log('[VIDEO] startVideoRecording called successfully');
+            console.log('[VIDEO] ✅ startVideoRecording called successfully');
           } catch (error) {
             console.error('[VIDEO] ❌ Error in startVideoRecording:', error);
             console.error('[VIDEO] Error stack:', error.stack);
@@ -164,7 +171,23 @@ function App() {
             alert('Failed to start video recording: ' + error.message);
           }
         }
-      }, 1000);
+      };
+
+      // Start countdown interval
+      const countdownIntervalId = setInterval(countdownCallback, 1000);
+      countdownIntervalRef.current = countdownIntervalId;
+      console.log('[VIDEO] ✅ Countdown interval created, ID:', countdownIntervalId);
+      
+      // Test countdown after 1 second
+      setTimeout(() => {
+        console.log('[VIDEO] 🔍 Testing countdown after 1 second...');
+        console.log('[VIDEO] countdownRef.current:', countdownRef.current);
+        if (countdownRef.current === 5) {
+          console.error('[VIDEO] ❌ Countdown is NOT running! Still at 5');
+        } else {
+          console.log('[VIDEO] ✅ Countdown is running! Value:', countdownRef.current);
+        }
+      }, 1100);
     } catch (error) {
       console.error('[VIDEO] ❌ Error in handleCaptureVideo:', error);
       console.error('[VIDEO] Error details:', { name: error.name, message: error.message, stack: error.stack });
