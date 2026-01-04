@@ -481,18 +481,38 @@ function App() {
         video.onerror = reject;
       });
 
-      // Reduced wait time
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Wait for video to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Validate video is ready and has valid dimensions
+      if (!video.videoWidth || !video.videoHeight || video.videoWidth <= 0 || video.videoHeight <= 0) {
+        throw new Error(`Video dimensions not available: ${video.videoWidth}x${video.videoHeight}`);
+      }
+
+      // Check for browser canvas size limits (most browsers limit to 32767px)
+      const MAX_CANVAS_SIZE = 32767;
+      if (video.videoWidth > MAX_CANVAS_SIZE || video.videoHeight > MAX_CANVAS_SIZE) {
+        throw new Error(`Video dimensions too large: ${video.videoWidth}x${video.videoHeight}. Maximum supported: ${MAX_CANVAS_SIZE}x${MAX_CANVAS_SIZE}`);
+      }
+
+      console.log(`[VIDEO] Video ready: ${video.videoWidth}x${video.videoHeight}, duration: ${video.duration}s`);
 
       const extractedFrames = [];
       const frameInterval = 3; // Extract every 3 seconds (reduced from 2 for fewer frames = faster)
       const totalDuration = video.duration;
+      
+      if (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0) {
+        throw new Error(`Invalid video duration: ${totalDuration}`);
+      }
+
       const frameTimes = [];
       
       // Calculate all frame times upfront
       for (let time = 0; time < totalDuration; time += frameInterval) {
         frameTimes.push(time);
       }
+
+      console.log(`[VIDEO] Will extract ${frameTimes.length} frames at intervals:`, frameTimes.slice(0, 5).map(t => `${t}s`).join(', '), '...');
 
       // Log video info
       const videoSizeMB = (videoBlob.size / 1024 / 1024).toFixed(2);
@@ -507,11 +527,15 @@ function App() {
             // Use requestAnimationFrame for better performance
             requestAnimationFrame(() => {
               try {
-                // Validate video dimensions
-                const videoWidth = video.videoWidth;
-                const videoHeight = video.videoHeight;
+                // Validate video dimensions - ensure they're valid numbers
+                const videoWidth = Math.floor(video.videoWidth);
+                const videoHeight = Math.floor(video.videoHeight);
                 
-                if (!videoWidth || !videoHeight || videoWidth <= 0 || videoHeight <= 0) {
+                // Comprehensive validation
+                if (!videoWidth || !videoHeight || 
+                    videoWidth <= 0 || videoHeight <= 0 ||
+                    !isFinite(videoWidth) || !isFinite(videoHeight) ||
+                    videoWidth > 32767 || videoHeight > 32767) {
                   console.warn(`[VIDEO] Invalid video dimensions at ${time}s: ${videoWidth}x${videoHeight}`);
                   resolve(); // Skip this frame
                   return;
@@ -519,11 +543,40 @@ function App() {
                 
                 console.log(`[VIDEO] Extracting frame ${index} at ${time.toFixed(2)}s, dimensions: ${videoWidth}x${videoHeight}`);
                 
+                // Create canvas with validated dimensions
                 const canvas = document.createElement('canvas');
-                canvas.width = videoWidth;
-                canvas.height = videoHeight;
+                
+                // Set dimensions - this is where "Invalid array length" can occur if dimensions are invalid
+                try {
+                  canvas.width = videoWidth;
+                  canvas.height = videoHeight;
+                  
+                  // Verify dimensions were set correctly
+                  if (canvas.width !== videoWidth || canvas.height !== videoHeight) {
+                    throw new Error(`Canvas dimension mismatch: set ${videoWidth}x${videoHeight}, got ${canvas.width}x${canvas.height}`);
+                  }
+                } catch (dimError) {
+                  console.error(`[VIDEO] ❌ Error setting canvas dimensions:`, dimError);
+                  console.error(`[VIDEO] Video dimensions: ${videoWidth}x${videoHeight}`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+                if (!ctx) {
+                  console.error(`[VIDEO] ❌ Failed to get canvas context`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
+                // Draw image - this can also throw "Invalid array length" if dimensions are wrong
+                try {
+                  ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
+                } catch (drawError) {
+                  console.error(`[VIDEO] ❌ Error drawing to canvas:`, drawError);
+                  resolve(); // Skip this frame
+                  return;
+                }
 
                 // Direct extraction without optimization (optimize later in batch)
                 const frameData = canvas.toDataURL('image/jpeg', 0.7);
