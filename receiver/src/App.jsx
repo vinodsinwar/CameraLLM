@@ -479,9 +479,11 @@ function App() {
           resolve();
         };
         video.onerror = reject;
+        // Timeout after 5 seconds if metadata doesn't load
+        setTimeout(() => reject(new Error('Video metadata loading timeout')), 5000);
       });
 
-      // Wait for video to be ready
+      // Wait for video to be ready and try to get duration
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Validate video is ready and has valid dimensions
@@ -495,14 +497,55 @@ function App() {
         throw new Error(`Video dimensions too large: ${video.videoWidth}x${video.videoHeight}. Maximum supported: ${MAX_CANVAS_SIZE}x${MAX_CANVAS_SIZE}`);
       }
 
-      console.log(`[VIDEO] Video ready: ${video.videoWidth}x${video.videoHeight}, duration: ${video.duration}s`);
+      // Get video duration - WebM from MediaRecorder sometimes returns Infinity
+      // Try multiple methods to get valid duration
+      let totalDuration = video.duration;
+      console.log(`[VIDEO] Initial duration from video.duration: ${totalDuration}s`);
+
+      // If duration is invalid, try seeking to end to trigger duration update
+      if (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0 || totalDuration === Infinity) {
+        console.log(`[VIDEO] Duration invalid (${totalDuration}), attempting to get duration by seeking...`);
+        
+        try {
+          // Try seeking to a very large time to get actual duration
+          video.currentTime = 1e10; // Seek to very large time
+          await new Promise((resolve) => {
+            const onSeeked = () => {
+              video.removeEventListener('seeked', onSeeked);
+              totalDuration = video.duration;
+              video.currentTime = 0; // Reset to start
+              resolve();
+            };
+            video.addEventListener('seeked', onSeeked);
+            setTimeout(() => {
+              video.removeEventListener('seeked', onSeeked);
+              resolve();
+            }, 2000); // Timeout after 2 seconds
+          });
+          
+          // Wait for seek to complete
+          await new Promise(resolve => setTimeout(resolve, 300));
+          totalDuration = video.duration;
+          console.log(`[VIDEO] Duration after seek attempt: ${totalDuration}s`);
+        } catch (seekError) {
+          console.warn(`[VIDEO] Error seeking for duration:`, seekError);
+        }
+
+        // If still invalid, use known recording duration (60 seconds = 1 minute)
+        if (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0 || totalDuration === Infinity) {
+          console.log(`[VIDEO] Duration still invalid (${totalDuration}), using fallback: 60 seconds (known recording time)`);
+          totalDuration = 60; // We know we recorded for 60 seconds
+        }
+      }
+
+      console.log(`[VIDEO] Video ready: ${video.videoWidth}x${video.videoHeight}, using duration: ${totalDuration}s`);
 
       const extractedFrames = [];
       const frameInterval = 3; // Extract every 3 seconds (reduced from 2 for fewer frames = faster)
-      const totalDuration = video.duration;
       
+      // Final validation
       if (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0) {
-        throw new Error(`Invalid video duration: ${totalDuration}`);
+        throw new Error(`Invalid video duration after all attempts: ${totalDuration}`);
       }
 
       const frameTimes = [];
