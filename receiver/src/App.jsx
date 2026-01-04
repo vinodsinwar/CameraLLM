@@ -507,14 +507,33 @@ function App() {
             // Use requestAnimationFrame for better performance
             requestAnimationFrame(() => {
               try {
+                // Validate video dimensions
+                const videoWidth = video.videoWidth;
+                const videoHeight = video.videoHeight;
+                
+                if (!videoWidth || !videoHeight || videoWidth <= 0 || videoHeight <= 0) {
+                  console.warn(`[VIDEO] Invalid video dimensions at ${time}s: ${videoWidth}x${videoHeight}`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
+                console.log(`[VIDEO] Extracting frame ${index} at ${time.toFixed(2)}s, dimensions: ${videoWidth}x${videoHeight}`);
+                
                 const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0);
+                ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
 
                 // Direct extraction without optimization (optimize later in batch)
                 const frameData = canvas.toDataURL('image/jpeg', 0.7);
+                
+                if (!frameData || frameData.length === 0) {
+                  console.warn(`[VIDEO] Empty frame data at ${time}s`);
+                  resolve(); // Skip this frame
+                  return;
+                }
+                
                 extractedFrames[index] = frameData; // Store at correct index
                 
                 // Update progress
@@ -526,9 +545,11 @@ function App() {
                   processedImages: processed
                 });
                 
+                console.log(`[VIDEO] ✅ Frame ${index} extracted successfully, size: ${(frameData.length / 1024).toFixed(2)} KB`);
                 resolve();
               } catch (err) {
-                console.error(`[VIDEO] Error extracting frame at ${time}s:`, err);
+                console.error(`[VIDEO] ❌ Error extracting frame at ${time}s:`, err);
+                console.error(`[VIDEO] Error details:`, { name: err.name, message: err.message, stack: err.stack });
                 resolve(); // Continue even if one frame fails
               }
             });
