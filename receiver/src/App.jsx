@@ -106,14 +106,23 @@ function App() {
   };
 
   const handleCaptureVideo = async () => {
-    if (isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null) return;
+    console.log('[VIDEO] ===== handleCaptureVideo CALLED =====');
+    console.log('[VIDEO] Current states:', { isCapturing, isCapturingMultiple, isRecordingVideo, countdown, waitTimer });
+    
+    if (isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null) {
+      console.log('[VIDEO] ❌ Blocked by state check');
+      return;
+    }
 
+    console.log('[VIDEO] ✅ State check passed, proceeding...');
     setIsRecordingVideo(true);
     recordedChunksRef.current = [];
     setVideoProgress(0);
+    console.log('[VIDEO] States set, requesting camera...');
 
     try {
       // Get camera stream with optimized constraints for video recording
+      console.log('[VIDEO] Calling getUserMedia...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -123,25 +132,33 @@ function App() {
         } 
       });
       
+      console.log('[VIDEO] ✅ getUserMedia success, stream:', stream);
+      console.log('[VIDEO] Stream active:', stream.active);
       setCameraStream(stream);
 
       // Start 5-second countdown before recording
       let remaining = 5;
       setCountdown(remaining);
+      console.log('[VIDEO] Starting 5-second countdown...');
 
       countdownIntervalRef.current = setInterval(() => {
         remaining -= 1;
         setCountdown(remaining);
+        console.log(`[VIDEO] Countdown: ${remaining}`);
 
         if (remaining <= 0) {
+          console.log('[VIDEO] ===== Countdown finished =====');
           clearInterval(countdownIntervalRef.current);
           setCountdown(null);
-          console.log('[VIDEO] ===== Countdown finished, calling startVideoRecording =====');
+          console.log('[VIDEO] Calling startVideoRecording...');
           console.log('[VIDEO] Stream state:', stream.active, stream.getTracks().length);
+          
           try {
             startVideoRecording(stream);
+            console.log('[VIDEO] startVideoRecording called successfully');
           } catch (error) {
             console.error('[VIDEO] ❌ Error in startVideoRecording:', error);
+            console.error('[VIDEO] Error stack:', error.stack);
             setIsRecordingVideo(false);
             setVideoProgress(null);
             alert('Failed to start video recording: ' + error.message);
@@ -149,7 +166,8 @@ function App() {
         }
       }, 1000);
     } catch (error) {
-      console.error('Error starting video capture:', error);
+      console.error('[VIDEO] ❌ Error in handleCaptureVideo:', error);
+      console.error('[VIDEO] Error details:', { name: error.name, message: error.message, stack: error.stack });
       setIsRecordingVideo(false);
       setVideoProgress(null);
       alert('Failed to start video recording: ' + error.message);
