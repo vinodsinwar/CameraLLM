@@ -620,29 +620,58 @@ function App() {
   // Optimize image: resize and compress
   const optimizeImage = (imageData, maxWidth = 1280, maxHeight = 720, quality = 0.7) => {
     return new Promise((resolve) => {
+      if (!imageData || typeof imageData !== 'string') {
+        console.error('[OPTIMIZE] Invalid imageData:', typeof imageData);
+        resolve(imageData); // Return as-is if invalid
+        return;
+      }
+      
       const img = new Image();
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+        try {
+          let width = img.width;
+          let height = img.height;
 
-        // Calculate new dimensions maintaining aspect ratio
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.floor(width * ratio);
-          height = Math.floor(height * ratio);
+          // Validate dimensions
+          if (!width || !height || width <= 0 || height <= 0 || !isFinite(width) || !isFinite(height)) {
+            console.warn('[OPTIMIZE] Invalid image dimensions:', width, height);
+            resolve(imageData); // Return original if dimensions invalid
+            return;
+          }
+
+          const canvas = document.createElement('canvas');
+          
+          // Calculate new dimensions maintaining aspect ratio
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.floor(width * ratio);
+            height = Math.floor(height * ratio);
+          }
+
+          // Validate calculated dimensions
+          if (width <= 0 || height <= 0 || !isFinite(width) || !isFinite(height)) {
+            console.warn('[OPTIMIZE] Invalid calculated dimensions:', width, height);
+            resolve(imageData); // Return original if calculated dimensions invalid
+            return;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with compression
+          const optimizedData = canvas.toDataURL('image/jpeg', quality);
+          resolve(optimizedData);
+        } catch (err) {
+          console.error('[OPTIMIZE] Error optimizing image:', err);
+          resolve(imageData); // Fallback to original if optimization fails
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to base64 with compression
-        const optimizedData = canvas.toDataURL('image/jpeg', quality);
-        resolve(optimizedData);
       };
-      img.onerror = () => resolve(imageData); // Fallback to original if optimization fails
+      img.onerror = (err) => {
+        console.error('[OPTIMIZE] Image load error:', err);
+        resolve(imageData); // Fallback to original if image load fails
+      };
       img.src = imageData;
     });
   };
