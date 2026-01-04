@@ -23,7 +23,7 @@ function App() {
   const multipleCaptureImagesRef = useRef([]);
   const { socket, connected } = useWebSocket();
 
-  // Cleanup on unmount
+  // Cleanup on unmount only (empty dependency array)
   useEffect(() => {
     return () => {
       console.log('[CLEANUP] Component unmounting, cleaning up intervals...');
@@ -44,6 +44,16 @@ function App() {
         mediaRecorderRef.current.stop();
       }
       if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []); // Empty array = only cleanup on unmount, not on cameraStream changes
+
+  // Separate cleanup for camera stream
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        console.log('[CLEANUP] Camera stream changed, stopping tracks...');
         cameraStream.getTracks().forEach(track => track.stop());
       }
     };
