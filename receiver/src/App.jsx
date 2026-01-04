@@ -148,12 +148,16 @@ function App() {
   };
 
   const startVideoRecording = (stream) => {
+    console.log('[VIDEO] ===== startVideoRecording called =====');
+    console.log('[VIDEO] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, readyState: t.readyState })));
+    
     try {
       // Determine best codec and mime type (vp9 is more efficient, fallback to vp8)
       let mimeType = 'video/webm;codecs=vp9';
       if (!MediaRecorder.isTypeSupported(mimeType)) {
         mimeType = 'video/webm;codecs=vp8';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
+          console.error('[VIDEO] No supported codec found!');
           alert('Video recording is not supported in this browser. Please use Chrome or Firefox.');
           setIsRecordingVideo(false);
           setVideoProgress(null);
@@ -162,18 +166,22 @@ function App() {
           return;
         }
       }
+      console.log('[VIDEO] Using mimeType:', mimeType);
 
       // Optimized settings for balance between quality and file size
       // 1.2 Mbps bitrate: ~27 MB for 3 minutes (good quality, reasonable size)
       // Resolution: 1280x720 (already constrained in getUserMedia)
       // Frame rate: 15 fps (sufficient for text capture, reduces file size)
+      console.log('[VIDEO] Creating MediaRecorder...');
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: mimeType,
         videoBitsPerSecond: 1200000 // 1.2 Mbps - optimized for text capture
       });
+      console.log('[VIDEO] MediaRecorder created, state:', mediaRecorder.state);
 
       mediaRecorderRef.current = mediaRecorder;
       recordedChunksRef.current = [];
+      console.log('[VIDEO] Refs initialized');
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
