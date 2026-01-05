@@ -526,12 +526,12 @@
   border-radius: 8px;
   padding: 1em !important;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   margin: 1em 0;
   line-height: 1.5;
   position: relative;
   max-width: 100%;
-  max-height: 500px;
+  max-height: none;
 }
 
 .markdown-content pre::-webkit-scrollbar {
@@ -615,27 +615,14 @@
 }
 
 .code-block-content {
-  max-height: 500px;
-  overflow: auto;
+  overflow: visible;
   background: #1e1e1e;
+  width: 100%;
 }
 
-.code-block-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.code-block-content::-webkit-scrollbar-track {
-  background: #2d2d2d;
-}
-
-.code-block-content::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-.code-block-content::-webkit-scrollbar-thumb:hover {
-  background: #666;
+.code-block-content > div {
+  overflow: visible !important;
+  max-height: none !important;
 }
 
 .markdown-content blockquote {

@@ -43,7 +43,9 @@ const CodeBlock = ({ children, language }) => {
             borderRadius: '0 0 8px 8px',
             fontSize: '0.875em',
             lineHeight: '1.6',
-            background: '#1e1e1e'
+            background: '#1e1e1e',
+            overflow: 'visible',
+            maxHeight: 'none'
           }}
         >
           {codeString}
