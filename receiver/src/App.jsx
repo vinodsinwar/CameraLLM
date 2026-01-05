@@ -341,14 +341,34 @@ function App() {
             if (captured >= imageCount) {
               clearInterval(customCaptureIntervalRef.current);
               
-              // All images captured, start analysis
+              // All images captured, stop camera and start analysis
               if (customCaptureImagesRef.current.length > 0) {
-                console.log(`[CUSTOM_CAPTURE] All ${customCaptureImagesRef.current.length} images captured. Starting analysis...`);
+                console.log(`[CUSTOM_CAPTURE] All ${customCaptureImagesRef.current.length} images captured. Stopping camera and starting analysis...`);
+                
+                // Stop camera stream
+                if (stream) {
+                  stream.getTracks().forEach(track => track.stop());
+                }
+                if (cameraStream) {
+                  cameraStream.getTracks().forEach(track => track.stop());
+                  setCameraStream(null);
+                }
+                
                 setIsCapturingCustom(false);
                 setCaptureProgress(null);
                 await analyzeMultipleImages(customCaptureImagesRef.current);
               } else {
                 console.warn('[CUSTOM_CAPTURE] No images captured!');
+                
+                // Stop camera stream even if no images
+                if (stream) {
+                  stream.getTracks().forEach(track => track.stop());
+                }
+                if (cameraStream) {
+                  cameraStream.getTracks().forEach(track => track.stop());
+                  setCameraStream(null);
+                }
+                
                 setIsCapturingCustom(false);
                 setCaptureProgress(null);
                 alert('No images were captured. Please try again.');
@@ -369,6 +389,16 @@ function App() {
             captured += 1;
             if (captured >= imageCount) {
               clearInterval(customCaptureIntervalRef.current);
+              
+              // Stop camera stream
+              if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+              }
+              if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                setCameraStream(null);
+              }
+              
               if (customCaptureImagesRef.current.length > 0) {
                 setIsCapturingCustom(false);
                 setCaptureProgress(null);
@@ -383,6 +413,15 @@ function App() {
         }, captureInterval * 1000); // 5 seconds
       } else {
         // All images already captured (shouldn't happen, but handle it)
+        // Stop camera stream
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+        }
+        
         if (customCaptureImagesRef.current.length > 0) {
           setIsCapturingCustom(false);
           setCaptureProgress(null);
@@ -415,6 +454,14 @@ function App() {
         if (completed) return;
         completed = true;
         if (timeoutId) clearTimeout(timeoutId);
+        
+        // Stop camera stream after analysis completes
+        if (cameraStream) {
+          cameraStream.getTracks().forEach(track => track.stop());
+          setCameraStream(null);
+          console.log('[BATCH_ANALYZE] Camera stream stopped after analysis');
+        }
+        
         setIsCapturing(false);
         setIsCapturingMultiple(false);
         setIsCapturingCustom(false);
