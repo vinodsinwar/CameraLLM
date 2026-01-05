@@ -324,7 +324,8 @@ function App() {
       // Capture first image immediately
       try {
         const rawImageData = await captureImageFromStream(stream);
-        const optimizedImage = await optimizeImage(rawImageData);
+        // Optimize image (but keep high resolution for text extraction)
+        const optimizedImage = await optimizeImage(rawImageData, 3840, 2160, 0.95);
         customCaptureImagesRef.current.push(optimizedImage);
         captured += 1;
         setCaptureProgress({ elapsed: 0, total: imageCount, captured });
