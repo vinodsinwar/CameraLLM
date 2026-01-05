@@ -102,8 +102,8 @@ function App() {
     }, 1000);
   };
 
-  // Optimize image: resize and compress
-  const optimizeImage = (imageData, maxWidth = 1280, maxHeight = 720, quality = 0.7) => {
+  // Optimize image: resize and compress (higher quality for better text extraction)
+  const optimizeImage = (imageData, maxWidth = 3840, maxHeight = 2160, quality = 0.95) => {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -134,10 +134,12 @@ function App() {
 
   const startMultipleCapture = async () => {
     try {
-      // Get camera stream once
+      // Get camera stream once with high resolution for better text extraction
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'environment'
+          facingMode: 'environment',
+          width: { ideal: 3840, min: 1920 },
+          height: { ideal: 2160, min: 1080 }
         } 
       });
       
@@ -164,10 +166,11 @@ function App() {
         canvas.height = video.videoHeight;
         const ctx = canvas.getContext('2d');
         ctx.drawImage(video, 0, 0);
-        const rawImageData = canvas.toDataURL('image/jpeg', 0.85);
+        // Capture at full resolution with high quality
+        const rawImageData = canvas.toDataURL('image/jpeg', 0.95);
         
-        // Optimize image before storing
-        const optimizedImage = await optimizeImage(rawImageData);
+        // Optimize image (but keep high resolution for text extraction)
+        const optimizedImage = await optimizeImage(rawImageData, 3840, 2160, 0.95);
         multipleCaptureImagesRef.current.push(optimizedImage);
         setCaptureProgress({ elapsed: 0, total: 60, captured: 1 });
         console.log(`[CAPTURE] Image 1 captured and optimized. Size: ${(optimizedImage.length / 1024).toFixed(2)} KB`);
@@ -256,7 +259,8 @@ function App() {
             ctx.drawImage(video, 0, 0);
 
             // Convert to base64
-            const imageData = canvas.toDataURL('image/jpeg', 0.85);
+            // Capture at full resolution with high quality
+            const imageData = canvas.toDataURL('image/jpeg', 0.95);
             resolve(imageData);
           }, 500);
         } catch (err) {
@@ -304,7 +308,11 @@ function App() {
       let stream = cameraStream;
       if (!stream) {
         stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'environment' } 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 3840, min: 1920 },
+            height: { ideal: 2160, min: 1080 }
+          } 
         });
         setCameraStream(stream);
       }
@@ -528,10 +536,12 @@ function App() {
     try {
       console.log('Activating camera and capturing image...');
 
-      // Get camera stream
+      // Get camera stream with high resolution for better text extraction
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
-          facingMode: 'environment' // Use back camera on mobile if available
+          facingMode: 'environment', // Use back camera on mobile if available
+          width: { ideal: 3840, min: 1920 },
+          height: { ideal: 2160, min: 1080 }
         } 
       });
       
@@ -557,8 +567,8 @@ function App() {
               stream.getTracks().forEach(track => track.stop());
               setCameraStream(null);
 
-              // Convert to base64
-              const imageData = canvas.toDataURL('image/jpeg', 0.85);
+              // Convert to base64 with high quality for better text extraction
+              const imageData = canvas.toDataURL('image/jpeg', 0.95);
 
               // Send to server for analysis
               if (socket) {
