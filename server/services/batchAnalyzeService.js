@@ -398,8 +398,21 @@ Return ONLY the output in the exact format specified above.`;
           { text: prompt },
           ...imageParts
         ];
-        const result = await fallbackModel.generateContent(parts);
+        // Use higher temperature for fallback to avoid RECITATION
+        const result = await fallbackModel.generateContent(parts, {
+          generationConfig: {
+            temperature: 0.8,
+            topP: 0.95,
+            topK: 40,
+          },
+        });
         const response = await result.response;
+        
+        // Check for RECITATION in fallback response
+        if (response.candidates && response.candidates[0] && response.candidates[0].finishReason === 'RECITATION') {
+          throw new Error('RECITATION detected even with fallback model');
+        }
+        
         const analysis = response.text() || 'No analysis available';
         return formatBatchAnalysis(analysis);
       } catch (fallbackError) {
