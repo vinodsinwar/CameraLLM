@@ -436,6 +436,12 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureCu
                     >
                       5
                     </button>
+                    <button
+                      className="count-button"
+                      onClick={() => onImageCountSelected(7)}
+                    >
+                      7
+                    </button>
                   </div>
                 </div>
               </div>
