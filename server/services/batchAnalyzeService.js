@@ -228,9 +228,10 @@ Return ONLY the output in the exact format specified above.`;
       ...imageParts
     ];
 
-    // Configure safety settings to reduce false positives
+    // Configure generation settings to avoid RECITATION errors
+    // Higher temperature encourages varied responses and reduces verbatim reproduction
     const generationConfig = {
-      temperature: 0.1,
+      temperature: 0.7, // Increased from 0.1 to encourage more varied responses
       topP: 0.95,
       topK: 40,
     };
@@ -255,10 +256,19 @@ Return ONLY the output in the exact format specified above.`;
     ];
 
     // Use the model's generateContent with proper format
-    // Note: Safety settings are configured at model level, not per request
+    // Higher temperature and generation config help avoid RECITATION
     const result = await model.generateContent(parts, {
       generationConfig,
     });
+    
+    // Check for RECITATION in the response finish reason
+    if (result.response && result.response.candidates && result.response.candidates[0]) {
+      const finishReason = result.response.candidates[0].finishReason;
+      if (finishReason === 'RECITATION') {
+        console.warn('RECITATION detected in response, trying alternative approach');
+        throw new Error('RECITATION detected in response');
+      }
+    }
     const response = await result.response;
     const analysis = response.text() || 'No analysis available';
 
@@ -285,7 +295,16 @@ Return ONLY the output in the exact format specified above.`;
     if (error.message && (error.message.includes('gemini-3-flash') || error.message.includes('404'))) {
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        // Use higher temperature and safety settings for fallback model
+        const fallbackModel = genAI.getGenerativeModel({ 
+          model: 'gemini-2.5-flash',
+          safetySettings: [
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          ],
+        });
         
         // Recreate prompt for fallback
         const prompt = `You are analyzing ${images.length} sequential screenshots captured from a laptop screen. These images collectively contain multiple multiple-choice questions (MCQs).
