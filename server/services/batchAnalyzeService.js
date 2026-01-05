@@ -254,10 +254,10 @@ Return ONLY the output in the exact format specified above.`;
       },
     ];
 
-    const result = await model.generateContent({
-      contents: parts,
+    // Use the model's generateContent with proper format
+    // Note: Safety settings are configured at model level, not per request
+    const result = await model.generateContent(parts, {
       generationConfig,
-      safetySettings,
     });
     const response = await result.response;
     const analysis = response.text() || 'No analysis available';
