@@ -190,10 +190,11 @@ function App() {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(video, 0, 0);
 
-          const rawImageData = canvas.toDataURL('image/jpeg', 0.85);
+          // Capture at full resolution with high quality
+          const rawImageData = canvas.toDataURL('image/jpeg', 0.95);
           
-          // Optimize image before storing
-          const optimizedImage = await optimizeImage(rawImageData);
+          // Optimize image (but keep high resolution for text extraction)
+          const optimizedImage = await optimizeImage(rawImageData, 3840, 2160, 0.95);
           multipleCaptureImagesRef.current.push(optimizedImage);
           captured++;
           elapsed += 2;
@@ -355,7 +356,8 @@ function App() {
             }
 
             const rawImageData = await captureImageFromStream(stream);
-            const optimizedImage = await optimizeImage(rawImageData);
+            // Optimize image (but keep high resolution for text extraction)
+            const optimizedImage = await optimizeImage(rawImageData, 3840, 2160, 0.95);
             customCaptureImagesRef.current.push(optimizedImage);
             captured += 1;
             setCaptureProgress({ elapsed: (captured - 1) * captureInterval, total: imageCount * captureInterval, captured });
