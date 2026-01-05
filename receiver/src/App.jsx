@@ -513,6 +513,13 @@ function App() {
       }
     } catch (error) {
       console.error('[BATCH_ANALYZE] Error:', error);
+      
+      // Stop camera stream on error
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      
       setIsCapturing(false);
       setIsCapturingMultiple(false);
       setIsCapturingCustom(false);
