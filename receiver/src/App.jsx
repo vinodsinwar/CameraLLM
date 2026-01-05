@@ -573,6 +573,13 @@ function App() {
       }
     } catch (apiError) {
       console.error('[BATCH_ANALYZE] API fallback error:', apiError);
+      
+      // Stop camera stream on error
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        setCameraStream(null);
+      }
+      
       setIsCapturing(false);
       setIsCapturingMultiple(false);
       setIsCapturingCustom(false);
