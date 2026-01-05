@@ -675,14 +675,20 @@ function App() {
       )}
 
       {/* Multiple capture progress overlay */}
-      {captureProgress !== null && (
+      {captureProgress !== null && (isCapturingMultiple || isCapturingCustom) && (
         <div className="countdown-overlay">
           <div className="countdown-content">
             <div className="countdown-number">{captureProgress.captured}</div>
             <p className="countdown-text">
-              Captured {captureProgress.captured} images
+              {isCapturingCustom 
+                ? `Captured ${captureProgress.captured} / ${selectedImageCount || '?'} images`
+                : `Captured ${captureProgress.captured} images`}
               <br />
-              {captureProgress.elapsed}s / {captureProgress.total}s
+              {captureProgress.elapsed !== undefined && captureProgress.total !== undefined && (
+                <span style={{ fontSize: '0.8em', opacity: 0.8 }}>
+                  {captureProgress.elapsed}s / {captureProgress.total}s
+                </span>
+              )}
             </p>
           </div>
         </div>
