@@ -1,33 +1,54 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import ImageMessage from './ImageMessage';
 
-// Code block with syntax highlighting
+// Code block with syntax highlighting and copy button
 const CodeBlock = ({ children, language }) => {
+  const [copied, setCopied] = useState(false);
+  const codeString = String(children).replace(/\n$/, '');
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(codeString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy code:', err);
+    }
+  };
+
   return (
-    <div style={{ 
-      maxHeight: '500px', 
-      overflow: 'auto', 
-      borderRadius: '8px',
-      margin: '1em 0'
-    }}>
-      <SyntaxHighlighter
-        style={vscDarkPlus}
-        language={language || 'text'}
-        PreTag="div"
-        customStyle={{
-          margin: 0,
-          padding: '1em',
-          borderRadius: '8px',
-          fontSize: '0.875em',
-          lineHeight: '1.5'
-        }}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-language">{language || 'code'}</span>
+        <button 
+          className="code-block-copy-btn" 
+          onClick={handleCopy}
+          title="Copy code"
+        >
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+      </div>
+      <div className="code-block-content">
+        <SyntaxHighlighter
+          style={vscDarkPlus}
+          language={language || 'text'}
+          PreTag="div"
+          customStyle={{
+            margin: 0,
+            padding: '1em',
+            borderRadius: '0 0 8px 8px',
+            fontSize: '0.875em',
+            lineHeight: '1.6',
+            background: '#1e1e1e'
+          }}
+        >
+          {codeString}
+        </SyntaxHighlighter>
+      </div>
     </div>
   );
 };
@@ -45,11 +66,33 @@ const MarkdownContent = memo(({ content }) => {
             if (!inline && match) {
               return <CodeBlock language={match[1]}>{children}</CodeBlock>;
             }
+            // Handle code blocks without language specified (fallback)
+            if (!inline && typeof children === 'string' && children.length > 50) {
+              // If it's a long code block without language, treat it as text
+              return <CodeBlock language="text">{children}</CodeBlock>;
+            }
+            // Inline code styling
             return (
-              <code className={className} {...props}>
+              <code className="inline-code" {...props}>
                 {children}
               </code>
             );
+          },
+          pre({ node, children, ...props }) {
+            // Handle pre blocks that might contain code
+            if (node.children && node.children.length === 1) {
+              const child = node.children[0];
+              if (child.type === 'element' && child.tagName === 'code') {
+                // Already handled by code component
+                return <>{children}</>;
+              }
+            }
+            // Fallback: if pre contains plain text, treat as code block
+            const textContent = String(children);
+            if (textContent && textContent.length > 20 && !textContent.includes('```')) {
+              return <CodeBlock language="text">{textContent}</CodeBlock>;
+            }
+            return <pre className="markdown-pre" {...props}>{children}</pre>;
           },
           // Proper styling for better readability
           p: ({ node, ...props }) => <p className="markdown-p" {...props} />,
