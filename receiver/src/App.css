@@ -974,13 +974,11 @@
 /* Capture button styles */
 .capture-actions {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 0.5rem;
+  gap: 0.75rem;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .capture-button.capture-single {
@@ -995,31 +993,26 @@
   background: #45a049;
 }
 
-.capture-button.capture-video {
-  background: #ff9800 !important;
-  display: inline-block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
+.capture-button.capture-custom {
+  background: #ff9800;
 }
 
-.capture-button.capture-video:hover:not(:disabled) {
-  background: #f57c00 !important;
+.capture-button.capture-custom:hover:not(:disabled) {
+  background: #f57c00;
 }
 
 .capture-button {
   background: #1976d2;
   color: #ffffff;
-  padding: 0.4rem 0.8rem;
+  padding: 0.3rem 0.6rem;
   border: none;
   border-radius: 0.4rem;
-  font-size: 0.7rem;
+  font-size: 0.6rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  min-width: 45px;
-  flex-shrink: 0;
+  min-width: 50px;
   box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
-  white-space: nowrap;
 }
 
 .capture-button:hover:not(:disabled) {
@@ -1068,10 +1061,9 @@
   }
 
   .capture-button {
-    padding: 0.35rem 0.7rem;
-    font-size: 0.65rem;
-    min-width: 40px;
-    flex-shrink: 0;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.6rem;
+    min-width: 50px;
     width: auto;
     box-shadow: 0 2px 4px rgba(25, 118, 210, 0.3);
     font-weight: 600;
@@ -1080,20 +1072,16 @@
 
   .capture-actions {
     width: 100%;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 0.4rem;
-    padding: 0.4rem;
-    overflow-x: auto;
+    flex-direction: column;
+    gap: 0.75rem;
   }
 
   .clear-button {
     width: auto;
-    padding: 0.35rem 0.7rem;
-    font-size: 0.65rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.6rem;
     font-weight: 600;
     min-width: 40px;
-    flex-shrink: 0;
   }
 
   .chat-messages {
@@ -1123,6 +1111,135 @@
 
   .app-header h1 {
     font-size: 1rem;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-in;
+}
+
+.modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 400px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.modal-body p {
+  margin: 0 0 1.5rem 0;
+  color: #6b7280;
+  font-size: 0.9375rem;
+}
+
+.image-count-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.count-button {
+  flex: 1;
+  padding: 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #1976d2;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.count-button:hover {
+  background: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+}
+
+.count-button:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    width: 95%;
+    max-width: 350px;
+  }
+
+  .image-count-buttons {
+    flex-direction: column;
+  }
+
+  .count-button {
+    width: 100%;
   }
 }
 

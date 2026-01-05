@@ -2,19 +2,9 @@ import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import MessageItem from './MessageItem';
 import { MESSAGE_TYPES } from '@shared/constants.js';
 
-const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVideo, isCapturing, isCapturingMultiple, isRecordingVideo, countdown, waitTimer, captureProgress, videoProgress }) => {
+const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureCustom, isCapturing, isCapturingMultiple, isCapturingCustom, countdown, waitTimer, captureProgress, showImageCountModal, onImageCountSelected, onCloseModal }) => {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Debug: Log props to verify they're being passed
-  useEffect(() => {
-    console.log('[ChatInterface] Video button props:', {
-      hasOnCaptureVideo: !!onCaptureVideo,
-      isRecordingVideo: isRecordingVideo,
-      videoProgress: videoProgress,
-      type: typeof onCaptureVideo
-    });
-  }, [onCaptureVideo, isRecordingVideo, videoProgress]);
   const messagesEndRef = useRef(null);
   const imageContextRef = useRef(null);
   const seenImageIdsRef = useRef(new Set()); // Track all seen image IDs to prevent duplicates
@@ -245,10 +235,6 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
     const checkForNewImages = async () => {
       try {
         const response = await fetch('/api/latest-image');
-        if (!response.ok) {
-          // Silently fail if endpoint doesn't exist (404) - this is optional
-          return;
-        }
         const data = await response.json();
         
         if (data.success && data.imageId) {
@@ -372,7 +358,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
               type="button"
               className="capture-button capture-single"
               onClick={onCaptureSingle}
-              disabled={isCapturing || isCapturingMultiple || countdown !== null || waitTimer !== null || isLoading}
+              disabled={isCapturing || isCapturingMultiple || isCapturingCustom || countdown !== null || waitTimer !== null || isLoading}
               title="Capture Single Image"
             >
             {countdown !== null && !isCapturingMultiple
@@ -385,7 +371,7 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
               type="button"
               className="capture-button capture-multiple"
               onClick={onCaptureMultiple}
-              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null || isLoading}
+              disabled={isCapturing || isCapturingMultiple || isCapturingCustom || countdown !== null || waitTimer !== null || isLoading}
               title="Capture Multiple Images"
             >
               {isCapturingMultiple
@@ -398,15 +384,15 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
             </button>
             <button
               type="button"
-              className="capture-button capture-video"
-              onClick={onCaptureVideo || (() => console.warn('onCaptureVideo not provided'))}
-              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null || isLoading || !onCaptureVideo}
-              title="Capture Video (1 minute)"
+              className="capture-button capture-custom"
+              onClick={onCaptureCustom}
+              disabled={isCapturing || isCapturingMultiple || isCapturingCustom || countdown !== null || waitTimer !== null || isLoading}
+              title="Capture Custom Number of Images"
             >
-              {isRecordingVideo
-                ? videoProgress !== null
-                  ? `${Math.floor(videoProgress / 60)}:${String(videoProgress % 60).padStart(2, '0')}`
-                  : '...'
+              {isCapturingCustom
+                ? `${captureProgress?.captured || 0}`
+                : countdown !== null && isCapturingCustom
+                ? `${countdown}`
                 : '3'}
             </button>
           {messages.length > 0 && (
@@ -415,10 +401,45 @@ const ChatInterface = ({ socket, onCaptureSingle, onCaptureMultiple, onCaptureVi
               className="clear-button"
               onClick={handleClearChat}
               title="Clear Chat"
-              disabled={isCapturing || isCapturingMultiple || isRecordingVideo || countdown !== null || waitTimer !== null}
+              disabled={isCapturing || isCapturingMultiple || isCapturingCustom || countdown !== null || waitTimer !== null}
             >
               X
             </button>
+          )}
+          
+          {/* Image Count Selection Modal */}
+          {showImageCountModal && (
+            <div className="modal-overlay" onClick={onCloseModal}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>Select Number of Images</h3>
+                  <button className="modal-close" onClick={onCloseModal}>×</button>
+                </div>
+                <div className="modal-body">
+                  <p>How many images would you like to capture?</p>
+                  <div className="image-count-buttons">
+                    <button
+                      className="count-button"
+                      onClick={() => onImageCountSelected(2)}
+                    >
+                      2
+                    </button>
+                    <button
+                      className="count-button"
+                      onClick={() => onImageCountSelected(3)}
+                    >
+                      3
+                    </button>
+                    <button
+                      className="count-button"
+                      onClick={() => onImageCountSelected(5)}
+                    >
+                      5
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </form>
