@@ -20,7 +20,16 @@ const getGeminiClient = () => {
     }
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Use Gemini 3 Flash for better question extraction and accuracy
-    visionModel = genAI.getGenerativeModel({ model: 'gemini-3-flash' });
+    // Configure with safety settings to reduce false positives
+    visionModel = genAI.getGenerativeModel({ 
+      model: 'gemini-3-flash',
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ],
+    });
   }
   return visionModel;
 };
@@ -219,7 +228,37 @@ Return ONLY the output in the exact format specified above.`;
       ...imageParts
     ];
 
-    const result = await model.generateContent(parts);
+    // Configure safety settings to reduce false positives
+    const generationConfig = {
+      temperature: 0.1,
+      topP: 0.95,
+      topK: 40,
+    };
+
+    const safetySettings = [
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE',
+      },
+    ];
+
+    const result = await model.generateContent({
+      contents: parts,
+      generationConfig,
+      safetySettings,
+    });
     const response = await result.response;
     const analysis = response.text() || 'No analysis available';
 
@@ -229,6 +268,18 @@ Return ONLY the output in the exact format specified above.`;
     return formattedAnalysis;
   } catch (error) {
     console.error('Error analyzing all images:', error);
+    
+    // Handle RECITATION error specifically
+    if (error.message && (error.message.includes('RECITATION') || error.message.includes('recitation'))) {
+      console.warn('RECITATION error detected, trying alternative approach with modified prompt');
+      // Try with a more educational/analytical prompt that doesn't trigger recitation
+      try {
+        return await analyzeWithEducationalPrompt(images);
+      } catch (eduError) {
+        console.error('Educational prompt also failed:', eduError);
+        throw new Error(`Analysis blocked by content policy. Please try with different images or contact support. Original error: ${error.message}`);
+      }
+    }
     
     // Fallback: try with gemini-2.5-flash if gemini-3-flash fails
     if (error.message && (error.message.includes('gemini-3-flash') || error.message.includes('404'))) {
