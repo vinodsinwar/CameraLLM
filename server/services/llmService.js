@@ -22,8 +22,15 @@ const getGeminiClient = () => {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Use Gemini 3 Flash for text chat (works great)
     // Use Gemini 2.5 Flash for vision/image analysis (more reliable for vision tasks)
-    model = genAI.getGenerativeModel({ model: 'gemini-3-flash' });
-    visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Configure with safety settings to reduce false positives
+    const safetySettings = [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+    ];
+    model = genAI.getGenerativeModel({ model: 'gemini-3-flash', safetySettings });
+    visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', safetySettings });
   }
   return { model, visionModel };
 };
