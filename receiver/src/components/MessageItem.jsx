@@ -24,8 +24,8 @@ const CodeBlock = ({ children, language }) => {
     <div className="code-block-wrapper">
       <div className="code-block-header">
         <span className="code-block-language">{language || 'code'}</span>
-        <button 
-          className="code-block-copy-btn" 
+        <button
+          className="code-block-copy-btn"
           onClick={handleCopy}
           title="Copy code"
         >
@@ -63,7 +63,7 @@ const MarkdownContent = memo(({ content }) => {
         remarkPlugins={[remarkGfm]}
         components={{
           code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
+            const match = /language-(\S+)/.exec(className || '');
             // Use syntax highlighting for code blocks
             if (!inline && match) {
               return <CodeBlock language={match[1]}>{children}</CodeBlock>;
@@ -144,8 +144,8 @@ const MessageItem = memo(({ message }) => {
 }, (prevProps, nextProps) => {
   // Only re-render if message content actually changed
   return prevProps.message.id === nextProps.message.id &&
-         prevProps.message.content === nextProps.message.content &&
-         prevProps.message.type === nextProps.message.type;
+    prevProps.message.content === nextProps.message.content &&
+    prevProps.message.type === nextProps.message.type;
 });
 
 MessageItem.displayName = 'MessageItem';
