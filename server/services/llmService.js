@@ -45,7 +45,7 @@ const convertBase64ToGeminiFormat = (base64DataUrl) => {
   // Remove data:image/...;base64, prefix
   const base64Data = base64DataUrl.split(',')[1];
   const mimeType = base64DataUrl.match(/data:image\/([^;]+);/)?.[1] || 'jpeg';
-  
+
   return {
     inlineData: {
       data: base64Data,
@@ -73,6 +73,7 @@ Format your response as follows:
 
 If the problem requires code:
 - Write clean, well-commented code
+- ALWAYS enclose code in Markdown code blocks (e.g., \`\`\`python ... \`\`\`)
 - Use proper code formatting with syntax highlighting
 - Include explanations of the approach
 - Show test cases if applicable
@@ -99,7 +100,7 @@ Focus ONLY on extracting the question/problem and providing the solution/answer.
     const result = await visionModel.generateContent([prompt, imagePart]);
     const response = await result.response;
     const analysis = response.text() || 'No analysis available';
-    
+
     return analysis;
   } catch (error) {
     // If gemini-3-flash fails, try fallback to gemini-2.5-flash
@@ -108,7 +109,7 @@ Focus ONLY on extracting the question/problem and providing the solution/answer.
       try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const fallbackModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-        
+
         const prompt = customPrompt || `Analyze this image and extract the QUESTION or PROBLEM from it, then provide the ANSWER or SOLUTION.
 
 Format your response as follows:
@@ -121,6 +122,7 @@ Format your response as follows:
 
 If the problem requires code:
 - Write clean, well-commented code
+- ALWAYS enclose code in Markdown code blocks (e.g., \`\`\`python ... \`\`\`)
 - Use proper code formatting with syntax highlighting
 - Include explanations of the approach
 - Show test cases if applicable
@@ -180,7 +182,7 @@ export const chatWithContext = async (message, imageData = null) => {
     const result = await selectedModel.generateContent(parts);
     const response = await result.response;
     const reply = response.text() || 'No response available';
-    
+
     return reply;
   } catch (error) {
     // If gemini-3-flash fails, try fallback to gemini-2.5-flash
