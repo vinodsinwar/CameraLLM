@@ -72,11 +72,14 @@ Format your response as follows:
 [Provide the complete answer or solution]
 
 If the problem requires code:
-- Write clean, well-commented code
-- ALWAYS enclose code in Markdown code blocks (e.g., \`\`\`python ... \`\`\`)
-- Use proper code formatting with syntax highlighting
-- Include explanations of the approach
-- Show test cases if applicable
+- You MUST provide the solution in TWO languages:
+  1. Python
+  2. C#
+- Write clean, well-commented code for each.
+- ALWAYS enclose EACH code solution in its own Markdown code block (e.g., \`\`\`python ... \`\`\`).
+- Use proper code formatting with syntax highlighting.
+- Include explanations of the approach.
+- Show test cases if applicable.
 
 If it's a math problem:
 - Show step-by-step solution
@@ -121,11 +124,14 @@ Format your response as follows:
 [Provide the complete answer or solution]
 
 If the problem requires code:
-- Write clean, well-commented code
-- ALWAYS enclose code in Markdown code blocks (e.g., \`\`\`python ... \`\`\`)
-- Use proper code formatting with syntax highlighting
-- Include explanations of the approach
-- Show test cases if applicable
+- You MUST provide the solution in TWO languages:
+  1. Python
+  2. C#
+- Write clean, well-commented code for each.
+- ALWAYS enclose EACH code solution in its own Markdown code block (e.g., \`\`\`python ... \`\`\`).
+- Use proper code formatting with syntax highlighting.
+- Include explanations of the approach.
+- Show test cases if applicable.
 
 If it's a math problem:
 - Show step-by-step solution
